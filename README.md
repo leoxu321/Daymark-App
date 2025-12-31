@@ -5,10 +5,21 @@ A daily task planning app with job application tracking and Google Calendar inte
 ## Features
 
 - **Task Management**: Create and manage daily tasks with time-blocked scheduling
-- **Job Application Tracking**: Automatically fetches 5 internship opportunities per day from [SimplifyJobs](https://github.com/SimplifyJobs/Summer2026-Internships)
+- **Job Application Tracking**: Daily internship opportunities with configurable goals (5, 10, or 20 per day)
+- **Resume Matching**: Upload your resume to get match scores based on your skills
+- **Role Filtering**: Filter jobs by role type (Frontend, Backend, Full Stack, etc.)
+- **Monthly Goal Calendar**: Track your application progress with visual indicators
 - **Google Calendar Integration**: Syncs with your calendar to detect busy times
 - **Dynamic Time Shifting**: Automatically reschedules tasks around calendar conflicts
 - **Local Storage**: All data persisted locally, no account required
+
+## Data Source
+
+Job listings are sourced from the **SimplifyJobs** GitHub repository:
+
+**[https://github.com/SimplifyJobs/Summer2026-Internships](https://github.com/SimplifyJobs/Summer2026-Internships)**
+
+This repository maintains a curated list of Summer 2026 internship opportunities for tech roles, updated regularly by the community.
 
 ## Getting Started
 
