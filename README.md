@@ -2,8 +2,6 @@
 
 A daily productivity app with job application tracking, fitness goals, and personal metrics - all with Google Calendar integration.
 
-![Daymark App Screenshot](screenshots/daymark-screenshot.png)
-
 ## Features
 
 ### Home Tab
