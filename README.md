@@ -1,17 +1,44 @@
 # Daymark
 
-A daily task planning app with job application tracking and Google Calendar integration.
+A daily productivity app with job application tracking, fitness goals, and personal metrics - all with Google Calendar integration.
+
+![Daymark App Screenshot](screenshots/daymark-screenshot.png)
 
 ## Features
 
+### Home Tab
+- **Personal Metrics Dashboard**: Track your productivity with ML-powered insights
+  - Applications per week with trend indicators
+  - Fitness consistency percentage
+  - Rolling 7-day productivity average
+  - Best days of the week analysis
+  - Burnout prediction with risk indicators
+  - Smart goal suggestions based on your patterns
 - **Task Management**: Create and manage daily tasks with time-blocked scheduling
+- **Google Calendar Integration**: Syncs with your calendar to detect busy times
+
+### Jobs Tab
 - **Job Application Tracking**: Daily internship opportunities with configurable goals (5, 10, or 20 per day)
 - **Resume Matching**: Upload your resume to get match scores based on your skills
 - **Role Filtering**: Filter jobs by role type (Frontend, Backend, Full Stack, etc.)
 - **Monthly Goal Calendar**: Track your application progress with visual indicators
-- **Google Calendar Integration**: Syncs with your calendar to detect busy times
-- **Dynamic Time Shifting**: Automatically reschedules tasks around calendar conflicts
-- **Local Storage**: All data persisted locally, no account required
+- **Application Tracking**: Track status of all applications (Applied, Interview, Offer, Rejected, Ghosted, Withdrawn)
+  - Filter by status
+  - Sort by newest/oldest
+  - Auto-hide old rejected/ghosted applications after 30 days
+
+### Fitness Tab
+- **Daily Workout Goals**: Set and track exercise goals (push-ups, sit-ups, running, etc.)
+- **Monthly Fitness Calendar**: Visual progress tracking
+- **Customizable Goals**: Add, edit, or remove exercise targets
+
+## Screenshots
+
+To add screenshots:
+1. Run the app with `npm run dev`
+2. Take screenshots of the Home, Jobs, and Fitness tabs
+3. Save them to the `screenshots/` folder
+4. Reference them in this README
 
 ## Data Source
 
@@ -66,22 +93,26 @@ VITE_GOOGLE_CLIENT_ID=your-client-id-here.apps.googleusercontent.com
 - **Zustand** for state management (with localStorage persistence)
 - **TanStack Query** for data fetching
 - **date-fns** for date manipulation
+- **Lucide React** for icons
 
 ## Project Structure
 
 ```
 src/
 ├── components/
-│   ├── ui/          # Base UI components (Button, Card, etc.)
-│   ├── layout/      # Header, MainLayout
-│   ├── tasks/       # TaskList, TaskItem, TaskForm
-│   ├── jobs/        # JobCard, DailyJobsWidget
-│   └── calendar/    # CalendarConnect, BusyIndicator
-├── hooks/           # Custom React hooks
-├── store/           # Zustand stores
-├── services/        # API services (Google Calendar, job fetching)
-├── types/           # TypeScript type definitions
-└── utils/           # Utility functions
+│   ├── ui/           # Base UI components (Button, Card, etc.)
+│   ├── layout/       # Header, MainLayout
+│   ├── tasks/        # TaskList, TaskItem, TaskForm
+│   ├── jobs/         # JobCard, DailyJobsWidget, ApplicationTracking
+│   ├── calendar/     # CalendarConnect, BusyIndicator, MonthlyGoalCalendar
+│   ├── fitness/      # DailyFitnessWidget, FitnessGoalManager, MonthlyFitnessCalendar
+│   ├── dashboard/    # PersonalMetricsDashboard
+│   └── profile/      # SkillsManager
+├── hooks/            # Custom React hooks
+├── store/            # Zustand stores (jobs, fitness, applications, etc.)
+├── services/         # API services (Google Calendar, job fetching, job matching)
+├── types/            # TypeScript type definitions
+└── utils/            # Utility functions
 ```
 
 ## Scripts
