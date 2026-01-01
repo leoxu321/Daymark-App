@@ -1,7 +1,7 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { GoogleOAuthProvider } from '@react-oauth/google'
-import { Calendar } from 'lucide-react'
+import { Calendar, Briefcase, Dumbbell, Home } from 'lucide-react'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { TaskList } from '@/components/tasks/TaskList'
 import { DailyJobsWidget } from '@/components/jobs/DailyJobsWidget'
@@ -10,6 +10,7 @@ import { CalendarConnect } from '@/components/calendar/CalendarConnect'
 import { BusyIndicator } from '@/components/calendar/BusyIndicator'
 import { MonthlyGoalCalendar } from '@/components/calendar/MonthlyGoalCalendar'
 import { SkillsManager } from '@/components/profile/SkillsManager'
+import { DailyFitnessWidget, FitnessGoalManager, MonthlyFitnessCalendar } from '@/components/fitness'
 import { Button } from '@/components/ui/button'
 import { useGoogleCalendar } from '@/hooks/useGoogleCalendar'
 import { useCalendarStore } from '@/store/calendarStore'
@@ -23,6 +24,40 @@ const queryClient = new QueryClient({
     },
   },
 })
+
+type TabType = 'home' | 'jobs' | 'fitness'
+
+// Tab navigation component
+function TabNav({ activeTab, onTabChange }: { activeTab: TabType; onTabChange: (tab: TabType) => void }) {
+  return (
+    <div className="flex gap-2 mb-6">
+      <Button
+        variant={activeTab === 'home' ? 'default' : 'outline'}
+        onClick={() => onTabChange('home')}
+        className="flex-1 sm:flex-none"
+      >
+        <Home className="h-4 w-4 mr-2" />
+        Home
+      </Button>
+      <Button
+        variant={activeTab === 'jobs' ? 'default' : 'outline'}
+        onClick={() => onTabChange('jobs')}
+        className="flex-1 sm:flex-none"
+      >
+        <Briefcase className="h-4 w-4 mr-2" />
+        Jobs
+      </Button>
+      <Button
+        variant={activeTab === 'fitness' ? 'default' : 'outline'}
+        onClick={() => onTabChange('fitness')}
+        className="flex-1 sm:flex-none"
+      >
+        <Dumbbell className="h-4 w-4 mr-2" />
+        Fitness
+      </Button>
+    </div>
+  )
+}
 
 // Header calendar section with Google login
 function HeaderCalendarSection() {
@@ -50,50 +85,33 @@ function HeaderCalendarSection() {
   )
 }
 
-// Dashboard content WITH Google Calendar integration
-function DashboardWithCalendar() {
+// Home Tab Content (with calendar integration)
+function HomeTabWithCalendar() {
   const today = getTodayDateString()
-  const { isAuthenticated, fetchBusyTimes } = useGoogleCalendar()
   const { getBusySlots } = useCalendarStore()
   const busySlots = getBusySlots(today)
 
-  // Fetch busy times when calendar is connected
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchBusyTimes(new Date())
-    }
-  }, [isAuthenticated, fetchBusyTimes])
-
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      {/* Left Column - Calendar, Stats & Tasks */}
       <div className="space-y-6">
-        <MonthlyGoalCalendar />
-        <JobApplicationTracker />
         <TaskList />
         {busySlots.length > 0 && <BusyIndicator slots={busySlots} />}
-        <CalendarConnect />
       </div>
-
-      {/* Right Column - Jobs */}
       <div className="space-y-6">
-        <SkillsManager />
-        <DailyJobsWidget />
+        <CalendarConnect />
       </div>
     </div>
   )
 }
 
-// Dashboard content WITHOUT Google Calendar (no OAuth provider available)
-function DashboardWithoutCalendar() {
+// Home Tab Content (without calendar integration)
+function HomeTabWithoutCalendar() {
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      {/* Left Column - Calendar, Stats & Tasks */}
       <div className="space-y-6">
-        <MonthlyGoalCalendar />
-        <JobApplicationTracker />
         <TaskList />
-        {/* Connect Calendar with setup instructions */}
+      </div>
+      <div className="space-y-6">
         <div className="rounded-xl border bg-card p-6">
           <h3 className="font-semibold mb-2 flex items-center gap-2">
             <Calendar className="h-5 w-5" />
@@ -113,12 +131,81 @@ function DashboardWithoutCalendar() {
           </p>
         </div>
       </div>
+    </div>
+  )
+}
 
-      {/* Right Column - Jobs */}
+// Jobs Tab Content
+function JobsTab() {
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      {/* Left Column - Calendar & Stats */}
+      <div className="space-y-6">
+        <MonthlyGoalCalendar />
+        <JobApplicationTracker />
+      </div>
+
+      {/* Right Column - Job Preferences & Daily Jobs */}
       <div className="space-y-6">
         <SkillsManager />
         <DailyJobsWidget />
       </div>
+    </div>
+  )
+}
+
+// Fitness Tab Content
+function FitnessTab() {
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      {/* Left Column - Calendar & Stats */}
+      <div className="space-y-6">
+        <MonthlyFitnessCalendar />
+        <FitnessGoalManager />
+      </div>
+
+      {/* Right Column - Daily Workout */}
+      <div className="space-y-6">
+        <DailyFitnessWidget />
+      </div>
+    </div>
+  )
+}
+
+// Dashboard content WITH Google Calendar integration
+function DashboardWithCalendar() {
+  const [activeTab, setActiveTab] = useState<TabType>('home')
+  const { isAuthenticated, fetchBusyTimes } = useGoogleCalendar()
+
+  // Fetch busy times when calendar is connected
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchBusyTimes(new Date())
+    }
+  }, [isAuthenticated, fetchBusyTimes])
+
+  return (
+    <div className="space-y-6">
+      <TabNav activeTab={activeTab} onTabChange={setActiveTab} />
+
+      {activeTab === 'home' && <HomeTabWithCalendar />}
+      {activeTab === 'jobs' && <JobsTab />}
+      {activeTab === 'fitness' && <FitnessTab />}
+    </div>
+  )
+}
+
+// Dashboard content WITHOUT Google Calendar (no OAuth provider available)
+function DashboardWithoutCalendar() {
+  const [activeTab, setActiveTab] = useState<TabType>('home')
+
+  return (
+    <div className="space-y-6">
+      <TabNav activeTab={activeTab} onTabChange={setActiveTab} />
+
+      {activeTab === 'home' && <HomeTabWithoutCalendar />}
+      {activeTab === 'jobs' && <JobsTab />}
+      {activeTab === 'fitness' && <FitnessTab />}
     </div>
   )
 }

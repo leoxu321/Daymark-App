@@ -2,6 +2,7 @@ export * from './task'
 export * from './job'
 export * from './calendar'
 export * from './profile'
+export * from './fitness'
 
 export interface AppSettings {
   theme: 'light' | 'dark' | 'system'
