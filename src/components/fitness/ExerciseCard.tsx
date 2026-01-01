@@ -3,6 +3,10 @@ import { Card, CardContent } from '@/components/ui/card'
 import { ExerciseGoal } from '@/types'
 import { cn } from '@/lib/utils'
 
+function formatNumber(num: number): string {
+  return num.toLocaleString()
+}
+
 interface ExerciseCardProps {
   goal: ExerciseGoal
   isCompleted: boolean
@@ -23,7 +27,7 @@ export function ExerciseCard({ goal, isCompleted, onToggle }: ExerciseCardProps)
           <div className="flex-1">
             <h3 className="font-medium">{goal.name}</h3>
             <p className="text-sm text-muted-foreground">
-              {goal.target} {goal.unit}
+              {formatNumber(goal.target)} {goal.unit}
             </p>
           </div>
           <div

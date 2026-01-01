@@ -13,11 +13,10 @@ export function DailyJobsWidget() {
     markJobSkipped,
     isJobCompleted,
     isJobSkipped,
-    stats,
+    dailyProgress,
   } = useJobs()
 
-  const completedCount = stats.todayCompleted
-  const totalCount = todaysJobs.length
+  const { completed, goal } = dailyProgress
 
   if (isLoading) {
     return (
@@ -51,15 +50,17 @@ export function DailyJobsWidget() {
             Today's Applications
           </CardTitle>
           <span className="text-sm font-medium text-muted-foreground">
-            {completedCount}/{totalCount}
+            {completed}/{goal} applied
           </span>
         </div>
-        <Progress value={completedCount} max={totalCount} className="mt-2" />
+        <Progress value={completed} max={goal} className="mt-2" />
       </CardHeader>
       <CardContent className="space-y-3">
         {todaysJobs.length === 0 ? (
           <p className="text-center text-muted-foreground py-4">
-            No jobs available. Try refreshing the job list.
+            {completed >= goal
+              ? "You've reached your daily goal! Great job!"
+              : 'No jobs available. Try adjusting your role filters.'}
           </p>
         ) : (
           todaysJobs.map((job) => (

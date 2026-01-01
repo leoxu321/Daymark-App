@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { GoogleOAuthProvider } from '@react-oauth/google'
-import { Calendar, Briefcase, Dumbbell, Home } from 'lucide-react'
+import { Calendar, Briefcase, Dumbbell, Home, ClipboardList } from 'lucide-react'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { TaskList } from '@/components/tasks/TaskList'
 import { DailyJobsWidget } from '@/components/jobs/DailyJobsWidget'
 import { JobApplicationTracker } from '@/components/jobs/JobApplicationTracker'
+import { ApplicationTracking } from '@/components/jobs/ApplicationTracking'
 import { CalendarConnect } from '@/components/calendar/CalendarConnect'
 import { BusyIndicator } from '@/components/calendar/BusyIndicator'
 import { MonthlyGoalCalendar } from '@/components/calendar/MonthlyGoalCalendar'
 import { SkillsManager } from '@/components/profile/SkillsManager'
 import { DailyFitnessWidget, FitnessGoalManager, MonthlyFitnessCalendar } from '@/components/fitness'
+import { PersonalMetricsDashboard } from '@/components/dashboard/PersonalMetricsDashboard'
 import { Button } from '@/components/ui/button'
 import { useGoogleCalendar } from '@/hooks/useGoogleCalendar'
 import { useCalendarStore } from '@/store/calendarStore'
@@ -94,10 +96,11 @@ function HomeTabWithCalendar() {
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <div className="space-y-6">
-        <TaskList />
-        {busySlots.length > 0 && <BusyIndicator slots={busySlots} />}
+        <PersonalMetricsDashboard />
       </div>
       <div className="space-y-6">
+        <TaskList />
+        {busySlots.length > 0 && <BusyIndicator slots={busySlots} />}
         <CalendarConnect />
       </div>
     </div>
@@ -109,9 +112,10 @@ function HomeTabWithoutCalendar() {
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <div className="space-y-6">
-        <TaskList />
+        <PersonalMetricsDashboard />
       </div>
       <div className="space-y-6">
+        <TaskList />
         <div className="rounded-xl border bg-card p-6">
           <h3 className="font-semibold mb-2 flex items-center gap-2">
             <Calendar className="h-5 w-5" />
@@ -135,21 +139,59 @@ function HomeTabWithoutCalendar() {
   )
 }
 
+type JobsSubTab = 'apply' | 'tracking'
+
+// Jobs Sub-Tab Navigation
+function JobsSubTabNav({ activeSubTab, onSubTabChange }: { activeSubTab: JobsSubTab; onSubTabChange: (tab: JobsSubTab) => void }) {
+  return (
+    <div className="flex gap-2 mb-4">
+      <Button
+        variant={activeSubTab === 'apply' ? 'default' : 'outline'}
+        size="sm"
+        onClick={() => onSubTabChange('apply')}
+      >
+        <Briefcase className="h-4 w-4 mr-2" />
+        Apply
+      </Button>
+      <Button
+        variant={activeSubTab === 'tracking' ? 'default' : 'outline'}
+        size="sm"
+        onClick={() => onSubTabChange('tracking')}
+      >
+        <ClipboardList className="h-4 w-4 mr-2" />
+        Tracking
+      </Button>
+    </div>
+  )
+}
+
 // Jobs Tab Content
 function JobsTab() {
-  return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      {/* Left Column - Calendar & Stats */}
-      <div className="space-y-6">
-        <MonthlyGoalCalendar />
-        <JobApplicationTracker />
-      </div>
+  const [subTab, setSubTab] = useState<JobsSubTab>('apply')
 
-      {/* Right Column - Job Preferences & Daily Jobs */}
-      <div className="space-y-6">
-        <SkillsManager />
-        <DailyJobsWidget />
-      </div>
+  return (
+    <div>
+      <JobsSubTabNav activeSubTab={subTab} onSubTabChange={setSubTab} />
+
+      {subTab === 'apply' && (
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Left Column - Calendar & Stats */}
+          <div className="space-y-6">
+            <MonthlyGoalCalendar />
+            <JobApplicationTracker />
+          </div>
+
+          {/* Right Column - Job Preferences & Daily Jobs */}
+          <div className="space-y-6">
+            <SkillsManager />
+            <DailyJobsWidget />
+          </div>
+        </div>
+      )}
+
+      {subTab === 'tracking' && (
+        <ApplicationTracking />
+      )}
     </div>
   )
 }

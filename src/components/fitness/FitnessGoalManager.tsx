@@ -5,6 +5,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useFitnessStore } from '@/store/fitnessStore'
 
+function formatNumber(num: number): string {
+  return num.toLocaleString()
+}
+
 export function FitnessGoalManager() {
   const { goals, addGoal, removeGoal, resetToDefaults } = useFitnessStore()
   const [isAdding, setIsAdding] = useState(false)
@@ -46,7 +50,7 @@ export function FitnessGoalManager() {
             <div>
               <p className="font-medium">{goal.name}</p>
               <p className="text-sm text-muted-foreground">
-                {goal.target} {goal.unit}
+                {formatNumber(goal.target)} {goal.unit}
               </p>
             </div>
             <Button

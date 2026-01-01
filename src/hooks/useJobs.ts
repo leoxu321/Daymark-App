@@ -7,6 +7,8 @@ import { fetchJobListings } from '@/services/jobsFetcher'
 import { getTodayDateString } from '@/utils/dateUtils'
 import { filterAndRankJobs, calculateJobMatchScore } from '@/services/jobMatcher'
 
+const DISPLAY_COUNT = 5 // Always show 5 jobs at a time
+
 export function useJobs() {
   const {
     allJobs,
@@ -54,70 +56,59 @@ export function useJobs() {
     // Check if we have an assignment for today
     let assignment = dailyAssignments[today]
 
-    // If no assignment exists, create one
+    // If no assignment exists, create one with enough jobs to handle skips
     if (!assignment) {
-      assignJobsForDay(today, settings.jobsPerDay)
+      // Assign more jobs than needed to account for skips
+      assignJobsForDay(today, Math.max(settings.jobsPerDay * 3, 30))
       assignment = useJobStore.getState().dailyAssignments[today]
     }
 
     if (!assignment) return []
 
-    // Filter and rank all available jobs based on current profile
+    // Get all ranked jobs for finding replacements
     const rankedJobs = filterAndRankJobs(jobs, profile.skills, hasResume)
 
-    // Get active job IDs (not skipped, not completed)
-    const activeJobIds = assignment.jobIds.filter(
-      (id) => !assignment.skippedJobIds.includes(id)
+    // Get completed job IDs
+    const completedIds = new Set(assignment.completedJobIds)
+    const skippedIds = new Set(assignment.skippedJobIds)
+
+    // Get jobs that are neither completed nor skipped
+    const availableJobs = rankedJobs.filter(
+      (job) => !completedIds.has(job.id) && !skippedIds.has(job.id)
     )
 
-    // Map to actual jobs with updated match scores
-    const activeJobs = activeJobIds
-      .map((id) => jobs.find((job) => job.id === id))
-      .filter((job): job is NonNullable<typeof job> => job !== undefined)
-      .map((job) => {
-        // Only calculate match score if resume is uploaded
-        const result = calculateJobMatchScore(job, profile.skills, hasResume)
-        return result.job
-      })
-
-    // If role types are selected, filter to only matching jobs
+    // Apply role filter if needed
+    let filteredJobs = availableJobs
     if (profile.skills.roleTypes.length > 0) {
-      const matchingJobs = activeJobs.filter((job) => {
+      const matchingJobs = availableJobs.filter((job) => {
         const result = calculateJobMatchScore(job, profile.skills, hasResume)
         return result.matchesRoleFilter
       })
-
-      // If we have fewer matching jobs than needed, get more from ranked jobs
-      if (matchingJobs.length < settings.jobsPerDay) {
-        const neededCount = settings.jobsPerDay - matchingJobs.length
-        const existingIds = new Set(matchingJobs.map((j) => j.id))
-        const additionalJobs = rankedJobs
-          .filter((j) => !existingIds.has(j.id))
-          .slice(0, neededCount)
-
-        const combined = [...matchingJobs, ...additionalJobs]
-        // Only sort by match score if resume is uploaded
-        if (hasResume) {
-          return combined.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0))
-        }
-        return combined
+      // If we have enough matching jobs, use those; otherwise use all available
+      if (matchingJobs.length >= DISPLAY_COUNT) {
+        filteredJobs = matchingJobs
       }
-
-      // Only sort by match score if resume is uploaded
-      if (hasResume) {
-        return matchingJobs.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0))
-      }
-      return matchingJobs
     }
 
-    // No role filter - only sort by match score if resume is uploaded
-    if (hasResume) {
-      return activeJobs.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0))
-    }
-    return activeJobs
+    // Take only DISPLAY_COUNT jobs to show
+    const displayJobs = filteredJobs.slice(0, DISPLAY_COUNT)
+
+    // Recalculate match scores for display
+    return displayJobs.map((job) => {
+      const result = calculateJobMatchScore(job, profile.skills, hasResume)
+      return result.job
+    })
   }, [allJobs, data, dailyAssignments, today, profile.skills, settings.jobsPerDay, assignJobsForDay, hasResume, profile.resumeFileName])
 
   const stats = getApplicationStats()
+
+  // Calculate progress toward daily goal
+  const dailyProgress = useMemo(() => {
+    const assignment = dailyAssignments[today]
+    const completed = assignment?.completedJobIds.length || 0
+    const goal = settings.jobsPerDay
+    return { completed, goal }
+  }, [dailyAssignments, today, settings.jobsPerDay])
 
   return {
     allJobs: data || allJobs,
@@ -129,6 +120,7 @@ export function useJobs() {
     markJobSkipped: (jobId: string, reason?: string) =>
       markJobSkipped(jobId, today, reason),
     stats,
+    dailyProgress,
     isJobCompleted: (jobId: string) => isJobCompleted(jobId, today),
     isJobSkipped: (jobId: string) => isJobSkipped(jobId, today),
     hasResume,

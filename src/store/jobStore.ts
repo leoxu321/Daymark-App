@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 import { Job, JobApplication, DailyJobAssignment } from '@/types'
 import { useProfileStore } from './profileStore'
 import { useSettingsStore } from './settingsStore'
+import { useApplicationStore } from './applicationStore'
 import { filterAndRankJobs, calculateJobMatchScore } from '@/services/jobMatcher'
 
 interface JobState {
@@ -226,6 +227,9 @@ export const useJobStore = create<JobState>()(
         const state = get()
         const job = state.allJobs.find((j) => j.id === jobId)
         if (!job) return
+
+        // Add to application tracker for intelligence tracking
+        useApplicationStore.getState().addApplication(job)
 
         const application: JobApplication = {
           id: crypto.randomUUID(),
