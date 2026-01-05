@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { format } from 'date-fns'
-import { Settings, RefreshCw, X } from 'lucide-react'
+import { Settings, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useJobs } from '@/hooks/useJobs'
 import { JobSourceSettings } from '@/components/jobs/JobSourceSettings'
 
 interface HeaderProps {
@@ -11,7 +10,6 @@ interface HeaderProps {
 
 export function Header({ calendarSection }: HeaderProps) {
   const today = new Date()
-  const { refetch, isLoading } = useJobs()
   const [showSettings, setShowSettings] = useState(false)
 
   return (
@@ -26,16 +24,6 @@ export function Header({ calendarSection }: HeaderProps) {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => refetch()}
-              disabled={isLoading}
-              title="Refresh jobs"
-            >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            </Button>
-
             {calendarSection}
 
             <Button

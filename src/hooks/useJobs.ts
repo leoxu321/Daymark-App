@@ -1,11 +1,11 @@
-import { useMemo } from 'react'
+import { useMemo, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useJobStore } from '@/store/jobStore'
 import { useProfileStore } from '@/store/profileStore'
 import { useSettingsStore } from '@/store/settingsStore'
 import { fetchJobListings } from '@/services/jobsFetcher'
 import { getTodayDateString } from '@/utils/dateUtils'
-import { filterAndRankJobs, calculateJobMatchScore } from '@/services/jobMatcher'
+import { calculateJobMatchScore } from '@/services/jobMatcher'
 import { JobSource } from '@/types'
 
 const DISPLAY_COUNT = 5 // Always show 5 jobs at a time
@@ -21,6 +21,7 @@ export function useJobs() {
     isJobCompleted,
     isJobSkipped,
     assignJobsForDay,
+    refreshJobsForDay,
   } = useJobStore()
 
   // Subscribe to profile changes to trigger re-render when roles change
@@ -47,7 +48,6 @@ export function useJobs() {
     data,
     isLoading,
     error,
-    refetch,
   } = useQuery({
     queryKey,
     queryFn: () =>
@@ -86,40 +86,27 @@ export function useJobs() {
 
     if (!assignment) return []
 
-    // Get all ranked jobs for finding replacements
-    const rankedJobs = filterAndRankJobs(jobs, profile.skills, hasResume)
-
-    // Get completed job IDs
+    // Get the assigned job IDs (excluding completed and skipped)
     const completedIds = new Set(assignment.completedJobIds)
     const skippedIds = new Set(assignment.skippedJobIds)
 
-    // Get jobs that are neither completed nor skipped
-    const availableJobs = rankedJobs.filter(
-      (job) => !completedIds.has(job.id) && !skippedIds.has(job.id)
+    // Filter to only show jobs that are in the assignment and not completed/skipped
+    const assignedJobIds = new Set(
+      assignment.jobIds.filter(id => !completedIds.has(id) && !skippedIds.has(id))
     )
 
-    // Apply role filter if needed
-    let filteredJobs = availableJobs
-    if (profile.skills.roleTypes.length > 0) {
-      const matchingJobs = availableJobs.filter((job) => {
+    // Get the actual job objects for assigned IDs
+    const assignedJobs = jobs
+      .filter(job => assignedJobIds.has(job.id))
+      .map(job => {
         const result = calculateJobMatchScore(job, profile.skills, hasResume)
-        return result.matchesRoleFilter
+        return result.job
       })
-      // If we have enough matching jobs, use those; otherwise use all available
-      if (matchingJobs.length >= DISPLAY_COUNT) {
-        filteredJobs = matchingJobs
-      }
-    }
+      .sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0))
 
     // Take only DISPLAY_COUNT jobs to show
-    const displayJobs = filteredJobs.slice(0, DISPLAY_COUNT)
-
-    // Recalculate match scores for display
-    return displayJobs.map((job) => {
-      const result = calculateJobMatchScore(job, profile.skills, hasResume)
-      return result.job
-    })
-  }, [allJobs, data, dailyAssignments, today, profile.skills, settings.jobsPerDay, assignJobsForDay, hasResume, profile.resumeFileName])
+    return assignedJobs.slice(0, DISPLAY_COUNT)
+  }, [allJobs, data, dailyAssignments, today, profile.skills, settings.jobsPerDay, assignJobsForDay, hasResume])
 
   const stats = getApplicationStats()
 
@@ -148,12 +135,18 @@ export function useJobs() {
     return bySource
   }, [data, allJobs])
 
+  // Force refresh - marks current jobs as seen and shows new jobs
+  const forceRefresh = useCallback(async () => {
+    // Mark current jobs as seen and assign new ones
+    refreshJobsForDay(today)
+  }, [refreshJobsForDay, today])
+
   return {
     allJobs: data || allJobs,
     todaysJobs,
     isLoading,
     error,
-    refetch,
+    refetch: forceRefresh,
     markJobApplied: (jobId: string) => markJobApplied(jobId, today),
     markJobSkipped: (jobId: string, reason?: string) =>
       markJobSkipped(jobId, today, reason),

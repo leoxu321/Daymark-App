@@ -10,11 +10,13 @@ interface JobState {
   allJobs: Job[]
   applications: JobApplication[]
   dailyAssignments: Record<string, DailyJobAssignment>
+  seenJobIds: string[] // Track jobs that have been shown to avoid repeats
   lastFetchedAt: string | null
 
   setAllJobs: (jobs: Job[]) => void
   getDailyJobs: (date: string) => Job[]
   assignJobsForDay: (date: string, count?: number) => void
+  refreshJobsForDay: (date: string) => void // Assign new jobs, marking old as seen
   refillDailyJobs: (date: string) => void
   markJobApplied: (jobId: string, date: string) => void
   markJobSkipped: (jobId: string, date: string, reason?: string) => void
@@ -36,6 +38,7 @@ export const useJobStore = create<JobState>()(
       allJobs: [],
       applications: [],
       dailyAssignments: {},
+      seenJobIds: [],
       lastFetchedAt: null,
 
       setAllJobs: (jobs) =>
@@ -77,6 +80,9 @@ export const useJobStore = create<JobState>()(
         // Get all used job IDs (applied or skipped ever)
         const usedIds = new Set(state.applications.map((a) => a.jobId))
 
+        // Get seen job IDs (jobs shown but not applied/skipped)
+        const seenIds = new Set(state.seenJobIds)
+
         // Get currently assigned job IDs for other days
         const assignedIds = new Set(
           Object.entries(state.dailyAssignments)
@@ -84,9 +90,9 @@ export const useJobStore = create<JobState>()(
             .flatMap(([, a]) => a.jobIds)
         )
 
-        // Filter to available jobs
+        // Filter to available jobs (exclude used, seen, and assigned)
         const availableJobs = state.allJobs.filter(
-          (job) => !usedIds.has(job.id) && !assignedIds.has(job.id)
+          (job) => !usedIds.has(job.id) && !seenIds.has(job.id) && !assignedIds.has(job.id)
         )
 
         // Get user skills and filter/rank jobs by match score
@@ -111,6 +117,67 @@ export const useJobStore = create<JobState>()(
         }))
       },
 
+      // Refresh jobs - marks current jobs as seen and assigns new ones (preserves completed)
+      refreshJobsForDay: (date) => {
+        const state = get()
+        const { settings } = useSettingsStore.getState()
+        const assignment = state.dailyAssignments[date]
+
+        // Keep track of completed jobs
+        const completedJobIds = assignment?.completedJobIds || []
+
+        // Mark current non-completed jobs as seen so they don't appear again
+        const jobsToMarkSeen = assignment
+          ? assignment.jobIds.filter(id => !completedJobIds.includes(id))
+          : []
+
+        // Update seen jobs
+        const newSeenJobIds = [...new Set([...state.seenJobIds, ...jobsToMarkSeen])]
+
+        // Get all used job IDs (applied or skipped ever)
+        const usedIds = new Set(state.applications.map((a) => a.jobId))
+
+        // Get currently assigned job IDs for other days
+        const assignedIds = new Set(
+          Object.entries(state.dailyAssignments)
+            .filter(([d]) => d !== date)
+            .flatMap(([, a]) => a.jobIds)
+        )
+
+        // Filter to available jobs (exclude used, seen, assigned, and already completed today)
+        const availableJobs = state.allJobs.filter(
+          (job) =>
+            !usedIds.has(job.id) &&
+            !newSeenJobIds.includes(job.id) &&
+            !assignedIds.has(job.id) &&
+            !completedJobIds.includes(job.id)
+        )
+
+        // Get user skills and filter/rank jobs by match score
+        const { profile } = useProfileStore.getState()
+        const rankedJobs = filterAndRankJobs(availableJobs, profile.skills)
+
+        // Calculate how many new jobs we need (total goal minus already completed)
+        const neededCount = Math.max(0, settings.jobsPerDay - completedJobIds.length)
+        const selectedJobs = rankedJobs.slice(0, neededCount)
+
+        // Create new assignment preserving completed jobs
+        const newAssignment: DailyJobAssignment = {
+          date,
+          jobIds: [...completedJobIds, ...selectedJobs.map((j) => j.id)],
+          completedJobIds: completedJobIds,
+          skippedJobIds: [],
+        }
+
+        set({
+          seenJobIds: newSeenJobIds,
+          dailyAssignments: {
+            ...state.dailyAssignments,
+            [date]: newAssignment,
+          },
+        })
+      },
+
       // Refill jobs when one is skipped - add a new job to replace it
       refillDailyJobs: (date) => {
         const state = get()
@@ -132,6 +199,9 @@ export const useJobStore = create<JobState>()(
           ...assignment.jobIds, // Include currently assigned
         ])
 
+        // Get seen job IDs
+        const seenIds = new Set(state.seenJobIds)
+
         // Get currently assigned job IDs for other days
         const assignedIds = new Set(
           Object.entries(state.dailyAssignments)
@@ -139,9 +209,9 @@ export const useJobStore = create<JobState>()(
             .flatMap(([, a]) => a.jobIds)
         )
 
-        // Filter to available jobs
+        // Filter to available jobs (exclude used, seen, and assigned)
         const availableJobs = state.allJobs.filter(
-          (job) => !usedIds.has(job.id) && !assignedIds.has(job.id)
+          (job) => !usedIds.has(job.id) && !seenIds.has(job.id) && !assignedIds.has(job.id)
         )
 
         if (availableJobs.length === 0) return
