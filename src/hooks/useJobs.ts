@@ -6,6 +6,7 @@ import { useSettingsStore } from '@/store/settingsStore'
 import { fetchJobListings } from '@/services/jobsFetcher'
 import { getTodayDateString } from '@/utils/dateUtils'
 import { filterAndRankJobs, calculateJobMatchScore } from '@/services/jobMatcher'
+import { JobSource } from '@/types'
 
 const DISPLAY_COUNT = 5 // Always show 5 jobs at a time
 
@@ -25,11 +26,22 @@ export function useJobs() {
   // Subscribe to profile changes to trigger re-render when roles change
   const { profile } = useProfileStore()
   const { settings } = useSettingsStore()
+  const { enabledJobSources, jobSearchParams } = settings
 
   const today = getTodayDateString()
 
   // Check if user has uploaded a resume (has resume file name stored)
   const hasResume = !!profile.resumeFileName
+
+  // Build dynamic query key based on enabled sources and search params
+  const queryKey = useMemo(
+    () => [
+      'jobs',
+      enabledJobSources.sort().join(','),
+      JSON.stringify(jobSearchParams),
+    ],
+    [enabledJobSources, jobSearchParams]
+  )
 
   const {
     data,
@@ -37,8 +49,17 @@ export function useJobs() {
     error,
     refetch,
   } = useQuery({
-    queryKey: ['jobs'],
-    queryFn: fetchJobListings,
+    queryKey,
+    queryFn: () =>
+      fetchJobListings({
+        sources: enabledJobSources,
+        searchParams: {
+          query: jobSearchParams.query,
+          location: jobSearchParams.location,
+          employmentType: jobSearchParams.employmentType,
+          remote: jobSearchParams.remote,
+        },
+      }),
     staleTime: 60 * 60 * 1000, // 1 hour
     gcTime: 24 * 60 * 60 * 1000, // 24 hours (formerly cacheTime)
   })
@@ -110,6 +131,23 @@ export function useJobs() {
     return { completed, goal }
   }, [dailyAssignments, today, settings.jobsPerDay])
 
+  // Get jobs count by source for display
+  const jobsBySource = useMemo(() => {
+    const jobs = data || allJobs
+    const bySource: Record<JobSource, number> = {
+      'simplify-jobs': 0,
+      jsearch: 0,
+    }
+
+    for (const job of jobs) {
+      if (bySource[job.source] !== undefined) {
+        bySource[job.source]++
+      }
+    }
+
+    return bySource
+  }, [data, allJobs])
+
   return {
     allJobs: data || allJobs,
     todaysJobs,
@@ -124,5 +162,7 @@ export function useJobs() {
     isJobCompleted: (jobId: string) => isJobCompleted(jobId, today),
     isJobSkipped: (jobId: string) => isJobSkipped(jobId, today),
     hasResume,
+    jobsBySource,
+    enabledSources: enabledJobSources,
   }
 }

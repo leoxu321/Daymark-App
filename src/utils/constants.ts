@@ -1,3 +1,5 @@
+import { JobSource } from '@/types'
+
 export const GITHUB_JOBS_URL =
   'https://raw.githubusercontent.com/SimplifyJobs/Summer2026-Internships/dev/README.md'
 
@@ -9,6 +11,36 @@ export const DEFAULT_WORKING_HOURS = {
 }
 
 export const DEFAULT_SHIFT_BUFFER = 15 // minutes
+
+// Job source defaults
+export const DEFAULT_ENABLED_SOURCES: JobSource[] = ['simplify-jobs']
+
+export const DEFAULT_JOB_SEARCH_PARAMS = {
+  query: 'software engineer intern',
+  location: 'USA',
+  employmentType: 'INTERN',
+  remote: false,
+}
+
+// Role-based search queries for JSearch API
+export const ROLE_SEARCH_QUERIES: Record<string, string> = {
+  'Software Engineer': 'software engineer',
+  Frontend: 'frontend developer',
+  Backend: 'backend developer',
+  'Full Stack': 'full stack developer',
+  'Data Science': 'data scientist',
+  'Machine Learning': 'machine learning engineer',
+  AI: 'AI engineer',
+  'Data Engineering': 'data engineer',
+  'Data Analyst': 'data analyst',
+  DevOps: 'devops engineer',
+  'Site Reliability': 'site reliability engineer',
+  Cloud: 'cloud engineer',
+  Security: 'security engineer',
+  Mobile: 'mobile developer',
+  iOS: 'ios developer',
+  Android: 'android developer',
+}
 
 export const TASK_CATEGORIES = [
   { value: 'job-application', label: 'Job Application', color: 'bg-blue-500' },

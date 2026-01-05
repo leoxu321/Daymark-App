@@ -4,6 +4,15 @@ export * from './calendar'
 export * from './profile'
 export * from './fitness'
 
+import { JobSource } from './job'
+
+export interface JobSearchParams {
+  query: string
+  location: string
+  employmentType: string
+  remote: boolean
+}
+
 export interface AppSettings {
   theme: 'light' | 'dark' | 'system'
   jobsPerDay: number
@@ -13,4 +22,7 @@ export interface AppSettings {
   }
   autoShiftEnabled: boolean
   shiftBuffer: number // Minutes buffer around busy times
+  // Job source settings
+  enabledJobSources: JobSource[]
+  jobSearchParams: JobSearchParams
 }

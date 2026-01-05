@@ -1,58 +1,88 @@
-import { Job } from '@/types'
-import { GITHUB_JOBS_URL } from '@/utils/constants'
-import { parseJobsFromMarkdown } from './markdownParser'
+import { Job, JobSource } from '@/types'
+import { fetchFromAllSources, JobSearchParams } from './jobSources'
 
-export async function fetchJobListings(): Promise<Job[]> {
-  try {
-    const response = await fetch(GITHUB_JOBS_URL)
+// Cache configuration
+interface CacheEntry {
+  jobs: Job[]
+  timestamp: number
+  sources: JobSource[]
+}
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch jobs: ${response.status}`)
+const CACHE_KEY = 'daymark-jobs-cache'
+const CACHE_DURATION = 60 * 60 * 1000 // 1 hour
+
+export interface FetchJobsOptions {
+  sources?: JobSource[]
+  searchParams?: JobSearchParams
+  forceRefresh?: boolean
+}
+
+const DEFAULT_SOURCES: JobSource[] = ['simplify-jobs']
+
+export async function fetchJobListings(
+  options: FetchJobsOptions = {}
+): Promise<Job[]> {
+  const {
+    sources = DEFAULT_SOURCES,
+    searchParams = {},
+    forceRefresh = false,
+  } = options
+
+  // Check cache first (unless force refresh)
+  if (!forceRefresh) {
+    const cached = getCachedJobs(sources)
+    if (cached) {
+      console.log(
+        `Using cached jobs (${cached.length} jobs from ${sources.join(', ')})`
+      )
+      return cached
     }
+  }
 
-    const markdown = await response.text()
-    const jobs = parseJobsFromMarkdown(markdown)
+  // Fetch from all enabled sources
+  console.log(`Fetching jobs from: ${sources.join(', ')}`)
+  const jobs = await fetchFromAllSources(sources, searchParams)
 
-    console.log(`Fetched ${jobs.length} jobs from SimplifyJobs`)
-    return jobs
-  } catch (error) {
-    console.error('Error fetching job listings:', error)
-    throw error
+  // Update cache
+  setCachedJobs(jobs, sources)
+
+  console.log(`Fetched ${jobs.length} total jobs`)
+  return jobs
+}
+
+function getCachedJobs(sources: JobSource[]): Job[] | null {
+  try {
+    const cached = localStorage.getItem(CACHE_KEY)
+    if (!cached) return null
+
+    const entry: CacheEntry = JSON.parse(cached)
+    const cacheAge = Date.now() - entry.timestamp
+
+    // Check if cache is valid
+    if (cacheAge >= CACHE_DURATION) return null
+
+    // Check if sources match (must have at least requested sources)
+    const hasSources = sources.every((s) => entry.sources.includes(s))
+    if (!hasSources) return null
+
+    return entry.jobs
+  } catch {
+    return null
   }
 }
 
-export async function fetchJobListingsWithCache(
-  cacheKey: string = 'daymark-jobs-cache'
-): Promise<Job[]> {
-  // Check cache first
-  const cached = localStorage.getItem(cacheKey)
-  if (cached) {
-    try {
-      const { jobs, timestamp } = JSON.parse(cached)
-      const cacheAge = Date.now() - timestamp
-      const oneHour = 60 * 60 * 1000
-
-      // Return cached data if less than 1 hour old
-      if (cacheAge < oneHour && Array.isArray(jobs) && jobs.length > 0) {
-        console.log('Using cached jobs data')
-        return jobs
-      }
-    } catch {
-      // Invalid cache, continue to fetch
-    }
+function setCachedJobs(jobs: Job[], sources: JobSource[]): void {
+  const entry: CacheEntry = {
+    jobs,
+    timestamp: Date.now(),
+    sources,
   }
+  localStorage.setItem(CACHE_KEY, JSON.stringify(entry))
+}
 
-  // Fetch fresh data
-  const jobs = await fetchJobListings()
-
-  // Update cache
-  localStorage.setItem(
-    cacheKey,
-    JSON.stringify({
-      jobs,
-      timestamp: Date.now(),
-    })
-  )
-
-  return jobs
+// Legacy function for backward compatibility
+export async function fetchJobListingsWithCache(
+  _cacheKey: string = CACHE_KEY
+): Promise<Job[]> {
+  return fetchJobListings({ forceRefresh: false })
 }

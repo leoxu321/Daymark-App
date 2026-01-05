@@ -1,6 +1,7 @@
-import { Briefcase, Loader2 } from 'lucide-react'
+import { Briefcase, Loader2, RefreshCw } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
+import { Button } from '@/components/ui/button'
 import { JobCard } from './JobCard'
 import { useJobs } from '@/hooks/useJobs'
 
@@ -9,6 +10,7 @@ export function DailyJobsWidget() {
     todaysJobs,
     isLoading,
     error,
+    refetch,
     markJobApplied,
     markJobSkipped,
     isJobCompleted,
@@ -49,9 +51,21 @@ export function DailyJobsWidget() {
             <Briefcase className="h-5 w-5" />
             Today's Applications
           </CardTitle>
-          <span className="text-sm font-medium text-muted-foreground">
-            {completed}/{goal} applied
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-muted-foreground">
+              {completed}/{goal} applied
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => refetch()}
+              disabled={isLoading}
+              title="Refresh jobs"
+              className="h-8 w-8"
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
         </div>
         <Progress value={completed} max={goal} className="mt-2" />
       </CardHeader>

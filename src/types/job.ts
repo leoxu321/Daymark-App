@@ -1,3 +1,6 @@
+// Job source types
+export type JobSource = 'simplify-jobs' | 'jsearch'
+
 export interface Job {
   id: string
   company: string
@@ -10,8 +13,19 @@ export interface Job {
   usOnly?: boolean // 🇺🇸 flag - requires US citizenship
   isSubEntry?: boolean // Sub-entry indicator (↳)
   matchScore?: number // 0-100 skill match score
-  source: 'simplify-jobs'
+  source: JobSource
   fetchedAt: string
+  // Additional fields from API sources
+  salary?: string
+  description?: string
+  employmentType?: string // Full-time, Part-time, Internship, etc.
+  remote?: boolean
+}
+
+// Job source configuration for UI display
+export const JOB_SOURCE_CONFIG: Record<JobSource, { name: string; color: string }> = {
+  'simplify-jobs': { name: 'SimplifyJobs', color: 'blue' },
+  'jsearch': { name: 'JSearch', color: 'green' },
 }
 
 // Application tracking status
