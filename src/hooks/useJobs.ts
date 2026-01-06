@@ -124,6 +124,8 @@ export function useJobs() {
     const bySource: Record<JobSource, number> = {
       'simplify-jobs': 0,
       jsearch: 0,
+      remotive: 0,
+      adzuna: 0,
     }
 
     for (const job of jobs) {

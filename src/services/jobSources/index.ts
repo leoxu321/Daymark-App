@@ -2,10 +2,14 @@ import { Job, JobSource } from '@/types'
 import { JobSourceAdapter, JobSearchParams } from './types'
 import { SimplifyJobsAdapter } from './simplifyAdapter'
 import { JSearchAdapter } from './jsearchAdapter'
+import { RemotiveAdapter } from './remotiveAdapter'
+import { AdzunaAdapter } from './adzunaAdapter'
 
 export * from './types'
 export { SimplifyJobsAdapter } from './simplifyAdapter'
 export { JSearchAdapter } from './jsearchAdapter'
+export { RemotiveAdapter } from './remotiveAdapter'
+export { AdzunaAdapter } from './adzunaAdapter'
 
 // Registry of all available adapters
 const adapters: Map<JobSource, JobSourceAdapter> = new Map()
@@ -14,6 +18,8 @@ const adapters: Map<JobSource, JobSourceAdapter> = new Map()
 function initializeJobSources(): void {
   adapters.set('simplify-jobs', new SimplifyJobsAdapter())
   adapters.set('jsearch', new JSearchAdapter())
+  adapters.set('remotive', new RemotiveAdapter())
+  adapters.set('adzuna', new AdzunaAdapter())
 }
 
 // Initialize on module load

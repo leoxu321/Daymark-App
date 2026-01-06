@@ -17,8 +17,10 @@ A daily productivity app with job application tracking, fitness goals, and perso
 
 ### Jobs Tab
 - **Multi-Source Job Fetching**: Aggregate jobs from multiple sources
-  - **SimplifyJobs**: Curated internship listings from GitHub
+  - **SimplifyJobs**: Curated internship listings from GitHub (no API key needed)
   - **JSearch API**: Real-time job listings from LinkedIn, Indeed, Glassdoor, and more
+  - **Remotive**: Free remote-only tech job listings (no API key needed, rate limited)
+  - **Adzuna**: Job listings from 20+ countries with free tier available
 - **Job Application Tracking**: Daily internship opportunities with configurable goals (5, 10, or 20 per day)
 - **Resume Matching**: Upload your resume to get match scores based on your skills
 - **Role Filtering**: Filter jobs by role type (Frontend, Backend, Full Stack, Data Science, ML/AI, etc.)
@@ -58,6 +60,18 @@ For additional job listings from major job boards (LinkedIn, Indeed, Glassdoor, 
 3. Copy your API key from the Endpoints tab
 4. Add to your `.env.local` file (see setup below)
 
+### Remotive (Free)
+Free remote-only tech job listings. No API key required - just enable in settings.
+
+**Note**: Rate limited to 4 requests per day with 30-second intervals between requests.
+
+### Adzuna (Optional)
+Job listings aggregated from 20+ countries with a generous free tier:
+
+1. Sign up at [Adzuna Developer](https://developer.adzuna.com/)
+2. Create an app to get your App ID and API Key
+3. Add both to your `.env.local` file (see setup below)
+
 ## Getting Started
 
 ### Prerequisites
@@ -87,6 +101,10 @@ VITE_GOOGLE_CLIENT_ID=your-client-id-here.apps.googleusercontent.com
 
 # JSearch API for additional job sources (Optional)
 VITE_RAPIDAPI_KEY=your-rapidapi-key-here
+
+# Adzuna API for job listings (Optional)
+VITE_ADZUNA_APP_ID=your-adzuna-app-id
+VITE_ADZUNA_APP_KEY=your-adzuna-api-key
 ```
 
 ### Google Calendar Setup (Optional)
@@ -141,7 +159,7 @@ src/
 ├── hooks/            # Custom React hooks
 ├── store/            # Zustand stores (jobs, fitness, applications, etc.)
 ├── services/
-│   ├── jobSources/   # Multi-source job fetching (SimplifyJobs, JSearch)
+│   ├── jobSources/   # Multi-source job fetching (SimplifyJobs, JSearch, Remotive, Adzuna)
 │   ├── googleCalendar.ts
 │   ├── jobsFetcher.ts
 │   └── jobMatcher.ts
