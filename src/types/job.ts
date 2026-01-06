@@ -1,5 +1,5 @@
 // Job source types
-export type JobSource = 'simplify-jobs' | 'jsearch'
+export type JobSource = 'simplify-jobs' | 'jsearch' | 'remotive' | 'adzuna'
 
 export interface Job {
   id: string
@@ -26,6 +26,8 @@ export interface Job {
 export const JOB_SOURCE_CONFIG: Record<JobSource, { name: string; color: string }> = {
   'simplify-jobs': { name: 'SimplifyJobs', color: 'blue' },
   'jsearch': { name: 'JSearch', color: 'green' },
+  'remotive': { name: 'Remotive', color: 'purple' },
+  'adzuna': { name: 'Adzuna', color: 'orange' },
 }
 
 // Application tracking status
@@ -36,14 +38,16 @@ export type ApplicationStatus =
   | 'rejected'     // ❌ Rejected - got rejection
   | 'ghosted'      // 👻 Ghosted - no response after 2+ weeks
   | 'withdrawn'    // 🚫 Withdrawn - withdrew application
+  | 'not_applied'  // ⏸️ Not Applied - marked but didn't actually apply
 
-export const APPLICATION_STATUS_CONFIG: Record<ApplicationStatus, { label: string; emoji: string; color: string }> = {
-  applied: { label: 'Applied', emoji: '📤', color: 'blue' },
-  interview: { label: 'Interview', emoji: '📞', color: 'yellow' },
-  offer: { label: 'Offer', emoji: '🎉', color: 'green' },
-  rejected: { label: 'Rejected', emoji: '❌', color: 'red' },
-  ghosted: { label: 'Ghosted', emoji: '👻', color: 'gray' },
-  withdrawn: { label: 'Withdrawn', emoji: '🚫', color: 'orange' },
+export const APPLICATION_STATUS_CONFIG: Record<ApplicationStatus, { label: string; emoji: string; color: string; countsAsApplied: boolean }> = {
+  applied: { label: 'Applied', emoji: '📤', color: 'blue', countsAsApplied: true },
+  interview: { label: 'Interview', emoji: '📞', color: 'yellow', countsAsApplied: true },
+  offer: { label: 'Offer', emoji: '🎉', color: 'green', countsAsApplied: true },
+  rejected: { label: 'Rejected', emoji: '❌', color: 'red', countsAsApplied: true },
+  ghosted: { label: 'Ghosted', emoji: '👻', color: 'gray', countsAsApplied: true },
+  withdrawn: { label: 'Withdrawn', emoji: '🚫', color: 'orange', countsAsApplied: true },
+  not_applied: { label: 'Not Applied', emoji: '⏸️', color: 'slate', countsAsApplied: false },
 }
 
 export interface TrackedApplication {

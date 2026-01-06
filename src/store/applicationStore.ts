@@ -108,6 +108,7 @@ export const useApplicationStore = create<ApplicationState>()(
           rejected: apps.filter((a) => a.status === 'rejected').length,
           ghosted: apps.filter((a) => a.status === 'ghosted').length,
           withdrawn: apps.filter((a) => a.status === 'withdrawn').length,
+          not_applied: apps.filter((a) => a.status === 'not_applied').length,
         }
       },
     }),
