@@ -44,6 +44,44 @@ export async function getEventsForDay(
   return data.items || []
 }
 
+export async function getEventsForWeek(
+  accessToken: string,
+  startDate: Date
+): Promise<CalendarEvent[]> {
+  const startOfWeek = new Date(startDate)
+  startOfWeek.setHours(0, 0, 0, 0)
+
+  const endOfWeek = new Date(startDate)
+  endOfWeek.setDate(endOfWeek.getDate() + 6)
+  endOfWeek.setHours(23, 59, 59, 999)
+
+  const params = new URLSearchParams({
+    timeMin: startOfWeek.toISOString(),
+    timeMax: endOfWeek.toISOString(),
+    singleEvents: 'true',
+    orderBy: 'startTime',
+  })
+
+  const response = await fetch(
+    `${CALENDAR_API_BASE}/calendars/primary/events?${params}`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  )
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error('UNAUTHORIZED')
+    }
+    throw new Error(`Failed to fetch events: ${response.status}`)
+  }
+
+  const data = await response.json()
+  return data.items || []
+}
+
 export async function getFreeBusy(
   accessToken: string,
   timeMin: Date,

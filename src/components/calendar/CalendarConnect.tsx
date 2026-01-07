@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { Calendar, LogOut, User, Clock, Loader2 } from 'lucide-react'
-import { format } from 'date-fns'
+import { format, startOfWeek, addDays, isToday, isSameDay } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useGoogleCalendar } from '@/hooks/useGoogleCalendar'
 import { useCalendarStore } from '@/store/calendarStore'
-import { getEventsForDay } from '@/services/googleCalendar'
+import { getEventsForWeek } from '@/services/googleCalendar'
 import { CalendarEvent } from '@/types'
 
 function EventItem({ event }: { event: CalendarEvent }) {
@@ -30,32 +30,58 @@ function EventItem({ event }: { event: CalendarEvent }) {
   )
 }
 
+interface DayEvents {
+  date: Date
+  events: CalendarEvent[]
+}
+
 export function CalendarConnect() {
   const { isAuthenticated, userEmail, userPicture, login, logout } =
     useGoogleCalendar()
   const { auth } = useCalendarStore()
-  const [todayEvents, setTodayEvents] = useState<CalendarEvent[]>([])
+  const [weekEvents, setWeekEvents] = useState<CalendarEvent[]>([])
   const [isLoadingEvents, setIsLoadingEvents] = useState(false)
 
-  // Fetch today's events when authenticated
+  // Get the start of the current week (Sunday)
+  const weekStart = useMemo(() => startOfWeek(new Date()), [])
+
+  // Fetch week's events when authenticated
   useEffect(() => {
-    async function fetchTodayEvents() {
+    async function fetchWeekEvents() {
       if (!isAuthenticated || !auth.accessToken) return
 
       setIsLoadingEvents(true)
       try {
-        const events = await getEventsForDay(auth.accessToken, new Date())
-        setTodayEvents(events)
+        const events = await getEventsForWeek(auth.accessToken, weekStart)
+        setWeekEvents(events)
       } catch (error) {
         console.error('Error fetching events:', error)
-        setTodayEvents([])
+        setWeekEvents([])
       } finally {
         setIsLoadingEvents(false)
       }
     }
 
-    fetchTodayEvents()
-  }, [isAuthenticated, auth.accessToken])
+    fetchWeekEvents()
+  }, [isAuthenticated, auth.accessToken, weekStart])
+
+  // Group events by day
+  const eventsByDay = useMemo(() => {
+    const days: DayEvents[] = []
+    for (let i = 0; i < 7; i++) {
+      const date = addDays(weekStart, i)
+      const dayEvents = weekEvents.filter((event) => {
+        const eventDate = event.start?.dateTime
+          ? new Date(event.start.dateTime)
+          : event.start?.date
+            ? new Date(event.start.date)
+            : null
+        return eventDate && isSameDay(eventDate, date)
+      })
+      days.push({ date, events: dayEvents })
+    }
+    return days
+  }, [weekEvents, weekStart])
 
   if (isAuthenticated) {
     return (
@@ -92,22 +118,31 @@ export function CalendarConnect() {
             </Button>
           </div>
 
-          {/* Today's Events */}
+          {/* Week's Events */}
           <div className="border-t pt-4">
-            <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+            <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
               <Clock className="h-4 w-4" />
-              Today's Events
+              This Week's Events
             </h4>
             {isLoadingEvents ? (
               <div className="flex items-center justify-center py-4">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
-            ) : todayEvents.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No events today</p>
+            ) : weekEvents.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No events this week</p>
             ) : (
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {todayEvents.map((event) => (
-                  <EventItem key={event.id} event={event} />
+              <div className="space-y-3 max-h-72 overflow-y-auto">
+                {eventsByDay.map(({ date, events }) => (
+                  events.length > 0 && (
+                    <div key={date.toISOString()} className="space-y-2">
+                      <div className={`text-xs font-medium ${isToday(date) ? 'text-primary' : 'text-muted-foreground'}`}>
+                        {isToday(date) ? 'Today' : format(date, 'EEEE, MMM d')}
+                      </div>
+                      {events.map((event) => (
+                        <EventItem key={event.id} event={event} />
+                      ))}
+                    </div>
+                  )
                 ))}
               </div>
             )}
