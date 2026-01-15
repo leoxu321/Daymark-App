@@ -3,6 +3,7 @@ import { format } from 'date-fns'
 import { Settings, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { JobSourceSettings } from '@/components/jobs/JobSourceSettings'
+import { ProgressBackup } from '@/components/settings/ProgressBackup'
 
 interface HeaderProps {
   calendarSection?: React.ReactNode
@@ -50,8 +51,9 @@ export function Header({ calendarSection }: HeaderProps) {
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <div className="p-4">
+            <div className="p-4 space-y-4">
               <JobSourceSettings />
+              <ProgressBackup />
             </div>
           </div>
         </div>

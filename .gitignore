@@ -27,3 +27,8 @@ dist-ssr
 .env
 .env.local
 .env.*.local
+
+# Local progress/data files
+progress.local.json
+*.progress.json
+user-data/
