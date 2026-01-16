@@ -7,7 +7,7 @@ import { TaskList } from '@/components/tasks/TaskList'
 import { DailyJobsWidget } from '@/components/jobs/DailyJobsWidget'
 import { JobApplicationTracker } from '@/components/jobs/JobApplicationTracker'
 import { ApplicationTracking } from '@/components/jobs/ApplicationTracking'
-import { CalendarConnect } from '@/components/calendar/CalendarConnect'
+import { GoogleSignIn } from '@/components/google/GoogleSignIn'
 import { BusyIndicator } from '@/components/calendar/BusyIndicator'
 import { MonthlyGoalCalendar } from '@/components/calendar/MonthlyGoalCalendar'
 import { SkillsManager } from '@/components/profile/SkillsManager'
@@ -15,6 +15,7 @@ import { DailyFitnessWidget, FitnessGoalManager, MonthlyFitnessCalendar } from '
 import { PersonalMetricsDashboard } from '@/components/dashboard/PersonalMetricsDashboard'
 import { Button } from '@/components/ui/button'
 import { useGoogleCalendar } from '@/hooks/useGoogleCalendar'
+import { useCloudSync } from '@/hooks/useCloudSync'
 import { useCalendarStore } from '@/store/calendarStore'
 import { getTodayDateString } from '@/utils/dateUtils'
 
@@ -61,19 +62,25 @@ function TabNav({ activeTab, onTabChange }: { activeTab: TabType; onTabChange: (
   )
 }
 
-// Header calendar section with Google login
+// Header section with Google sign-in status
 function HeaderCalendarSection() {
-  const { isAuthenticated, userEmail, login, logout } = useGoogleCalendar()
+  const { isAuthenticated, userEmail, userPicture, login, logout } = useGoogleCalendar()
 
   if (isAuthenticated) {
     return (
       <div className="flex items-center gap-2">
+        {userPicture ? (
+          <img
+            src={userPicture}
+            alt="Profile"
+            className="h-6 w-6 rounded-full hidden sm:block"
+          />
+        ) : null}
         <span className="text-xs text-muted-foreground hidden sm:inline">
           {userEmail}
         </span>
         <Button variant="outline" size="sm" onClick={logout}>
-          <Calendar className="h-4 w-4 mr-1" />
-          Disconnect
+          Sign Out
         </Button>
       </div>
     )
@@ -81,8 +88,7 @@ function HeaderCalendarSection() {
 
   return (
     <Button variant="outline" size="sm" onClick={() => login()}>
-      <Calendar className="h-4 w-4 mr-1" />
-      Connect Calendar
+      Sign In
     </Button>
   )
 }
@@ -101,13 +107,13 @@ function HomeTabWithCalendar() {
       <div className="space-y-6">
         <TaskList />
         {busySlots.length > 0 && <BusyIndicator slots={busySlots} />}
-        <CalendarConnect />
+        <GoogleSignIn />
       </div>
     </div>
   )
 }
 
-// Home Tab Content (without calendar integration)
+// Home Tab Content (without Google Sign-In)
 function HomeTabWithoutCalendar() {
   return (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -119,19 +125,19 @@ function HomeTabWithoutCalendar() {
         <div className="rounded-xl border bg-card p-6">
           <h3 className="font-semibold mb-2 flex items-center gap-2">
             <Calendar className="h-5 w-5" />
-            Connect Calendar
+            Sign In with Google
           </h3>
           <div className="p-3 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg text-sm mb-3">
             <p className="font-medium text-yellow-800 dark:text-yellow-200">
-              Google Calendar not configured
+              Google Sign-In not configured
             </p>
             <p className="text-yellow-700 dark:text-yellow-300 mt-1">
               Add VITE_GOOGLE_CLIENT_ID to your .env.local file to enable
-              calendar integration.
+              Google Sign-In and sync.
             </p>
           </div>
           <p className="text-sm text-muted-foreground">
-            Connect your Google Calendar to see busy times and plan tasks around your schedule.
+            Sign in with Google to sync your progress across devices and access your calendar.
           </p>
         </div>
       </div>
@@ -214,12 +220,15 @@ function FitnessTab() {
   )
 }
 
-// Dashboard content WITH Google Calendar integration
+// Dashboard content WITH Google Sign-In
 function DashboardWithCalendar() {
   const [activeTab, setActiveTab] = useState<TabType>('home')
   const { isAuthenticated, fetchBusyTimes } = useGoogleCalendar()
 
-  // Fetch busy times when calendar is connected
+  // Enable auto-sync to Google Drive when signed in
+  useCloudSync()
+
+  // Fetch busy times when signed in
   useEffect(() => {
     if (isAuthenticated) {
       fetchBusyTimes(new Date())

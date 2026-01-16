@@ -2,10 +2,14 @@ import { CalendarEvent, BusySlot } from '@/types'
 
 const CALENDAR_API_BASE = 'https://www.googleapis.com/calendar/v3'
 
-export const GOOGLE_CALENDAR_SCOPES = [
+export const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/calendar.readonly',
   'https://www.googleapis.com/auth/calendar.events.readonly',
+  'https://www.googleapis.com/auth/drive.appdata', // For storing app data in user's Drive
 ].join(' ')
+
+// Legacy export for backwards compatibility
+export const GOOGLE_CALENDAR_SCOPES = GOOGLE_SCOPES
 
 export async function getEventsForDay(
   accessToken: string,
