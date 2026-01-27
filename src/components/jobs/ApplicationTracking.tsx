@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { ExternalLink, Building2, MapPin, Sparkles, ArrowUpDown, Filter } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { useApplicationStore } from '@/store/applicationStore'
+import { useApplications } from '@/hooks/useApplications'
 import { ApplicationStatus, APPLICATION_STATUS_CONFIG, TrackedApplication } from '@/types'
 import { cn } from '@/lib/utils'
 
@@ -252,10 +252,39 @@ function filterVisibleApplications(applications: TrackedApplication[]): TrackedA
 }
 
 export function ApplicationTracking() {
-  const { applications, updateStatus, getStats } = useApplicationStore()
+  const { applications, updateStatus, stats, isLoading, error } = useApplications()
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
-  const stats = getStats()
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">Loading applications...</p>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Application Tracking</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-center text-destructive py-6">
+            Failed to load applications. Please try refreshing.
+          </p>
+        </CardContent>
+      </Card>
+    )
+  }
 
   // Filter out old rejected/ghosted applications
   const visibleApplications = filterVisibleApplications(applications)

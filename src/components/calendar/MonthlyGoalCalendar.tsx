@@ -1,11 +1,13 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Check, X } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { useJobStore } from '@/store/jobStore'
 import { useSettingsStore } from '@/store/settingsStore'
 import { cn } from '@/lib/utils'
-import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useAuth } from '@/providers/AuthProvider'
+import * as applicationsApi from '@/lib/supabase/api/applications'
+import { APPLICATION_STATUS_CONFIG } from '@/types'
 
 const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MONTHS = [
@@ -24,11 +26,33 @@ interface DayStatus {
 
 export function MonthlyGoalCalendar() {
   const [currentDate, setCurrentDate] = useState(new Date())
-  const { dailyAssignments } = useJobStore()
   const { settings } = useSettingsStore()
+  const { userId, isAuthenticated } = useAuth()
 
   const today = new Date()
   const todayString = today.toISOString().split('T')[0]
+
+  // Query applications from Supabase
+  const { data: applications = [] } = useQuery({
+    queryKey: ['applications', userId],
+    queryFn: () => applicationsApi.fetchApplications(userId!),
+    enabled: isAuthenticated && !!userId,
+  })
+
+  // Group applications by date (count only those that countsAsApplied)
+  const applicationsByDate = useMemo(() => {
+    const byDate: Record<string, number> = {}
+
+    applications.forEach(app => {
+      const config = APPLICATION_STATUS_CONFIG[app.status]
+      if (config?.countsAsApplied) {
+        const date = app.appliedAt.split('T')[0]
+        byDate[date] = (byDate[date] || 0) + 1
+      }
+    })
+
+    return byDate
+  }, [applications])
 
   // Get calendar data for current month view
   const calendarDays = useMemo(() => {
@@ -53,9 +77,8 @@ export function MonthlyGoalCalendar() {
 
     while (current <= endDate) {
       const dateString = current.toISOString().split('T')[0]
-      const assignment = dailyAssignments[dateString]
 
-      const completed = assignment?.completedJobIds.length || 0
+      const completed = applicationsByDate[dateString] || 0
       const goal = settings.jobsPerDay
 
       // Only count as "met goal" if date is in the past or today AND has completions
@@ -75,7 +98,7 @@ export function MonthlyGoalCalendar() {
     }
 
     return days
-  }, [currentDate, dailyAssignments, settings.jobsPerDay, todayString, today])
+  }, [currentDate, applicationsByDate, settings.jobsPerDay, todayString, today])
 
   // Calculate monthly stats
   const monthlyStats = useMemo(() => {

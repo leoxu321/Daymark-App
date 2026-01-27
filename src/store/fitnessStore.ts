@@ -1,10 +1,18 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
 import { ExerciseGoal, DailyExerciseProgress, DEFAULT_EXERCISES } from '@/types'
 
+/**
+ * Fitness Store - UI-only cache for fitness data
+ *
+ * NOTE: This store no longer persists to localStorage.
+ * Data is synced via Supabase when authenticated.
+ */
 interface FitnessState {
   goals: ExerciseGoal[]
   dailyProgress: Record<string, DailyExerciseProgress>
+
+  // Set entire goals array (for loading from Supabase)
+  setGoals: (goals: ExerciseGoal[]) => void
 
   // Goal management
   addGoal: (goal: Omit<ExerciseGoal, 'id'>) => void
@@ -18,113 +26,117 @@ interface FitnessState {
   isExerciseCompleted: (date: string, goalId: string) => boolean
   getDayStats: (date: string) => { completed: number; total: number }
   getMonthlyStats: (year: number, month: number) => Record<string, { completed: number; total: number }>
+
+  // Reset store (for logout)
+  reset: () => void
 }
 
-export const useFitnessStore = create<FitnessState>()(
-  persist(
-    (set, get) => ({
-      goals: DEFAULT_EXERCISES,
-      dailyProgress: {},
+const initialState = {
+  goals: DEFAULT_EXERCISES,
+  dailyProgress: {} as Record<string, DailyExerciseProgress>,
+}
 
-      addGoal: (goal) => {
-        const id = crypto.randomUUID()
-        set((state) => ({
-          goals: [...state.goals, { ...goal, id }],
-        }))
-      },
+export const useFitnessStore = create<FitnessState>()((set, get) => ({
+  ...initialState,
 
-      updateGoal: (id, updates) => {
-        set((state) => ({
-          goals: state.goals.map((g) =>
-            g.id === id ? { ...g, ...updates } : g
-          ),
-        }))
-      },
+  setGoals: (goals) => set({ goals }),
 
-      removeGoal: (id) => {
-        set((state) => ({
-          goals: state.goals.filter((g) => g.id !== id),
-        }))
-      },
+  addGoal: (goal) => {
+    const id = crypto.randomUUID()
+    set((state) => ({
+      goals: [...state.goals, { ...goal, id }],
+    }))
+  },
 
-      resetToDefaults: () => {
-        set({ goals: DEFAULT_EXERCISES })
-      },
+  updateGoal: (id, updates) => {
+    set((state) => ({
+      goals: state.goals.map((g) =>
+        g.id === id ? { ...g, ...updates } : g
+      ),
+    }))
+  },
 
-      toggleExercise: (date, goalId) => {
-        set((state) => {
-          const existing = state.dailyProgress[date]
-          const exercises = existing?.exercises || []
+  removeGoal: (id) => {
+    set((state) => ({
+      goals: state.goals.filter((g) => g.id !== id),
+    }))
+  },
 
-          const exerciseIndex = exercises.findIndex((e) => e.goalId === goalId)
+  resetToDefaults: () => {
+    set({ goals: DEFAULT_EXERCISES })
+  },
 
-          let newExercises
-          if (exerciseIndex >= 0) {
-            // Toggle existing
-            newExercises = exercises.map((e, i) =>
-              i === exerciseIndex ? { ...e, completed: !e.completed } : e
-            )
-          } else {
-            // Add new
-            newExercises = [...exercises, { goalId, completed: true }]
-          }
+  toggleExercise: (date, goalId) => {
+    set((state) => {
+      const existing = state.dailyProgress[date]
+      const exercises = existing?.exercises || []
 
-          return {
-            dailyProgress: {
-              ...state.dailyProgress,
-              [date]: {
-                date,
-                exercises: newExercises,
-              },
-            },
-          }
-        })
-      },
+      const exerciseIndex = exercises.findIndex((e) => e.goalId === goalId)
 
-      getProgress: (date) => {
-        const state = get()
-        return (
-          state.dailyProgress[date] || {
-            date,
-            exercises: [],
-          }
+      let newExercises
+      if (exerciseIndex >= 0) {
+        // Toggle existing
+        newExercises = exercises.map((e, i) =>
+          i === exerciseIndex ? { ...e, completed: !e.completed } : e
         )
-      },
+      } else {
+        // Add new
+        newExercises = [...exercises, { goalId, completed: true }]
+      }
 
-      isExerciseCompleted: (date, goalId) => {
-        const progress = get().dailyProgress[date]
-        if (!progress) return false
-        const exercise = progress.exercises.find((e) => e.goalId === goalId)
-        return exercise?.completed || false
-      },
+      return {
+        dailyProgress: {
+          ...state.dailyProgress,
+          [date]: {
+            date,
+            exercises: newExercises,
+          },
+        },
+      }
+    })
+  },
 
-      getDayStats: (date) => {
-        const state = get()
-        const progress = state.dailyProgress[date]
-        const total = state.goals.length
+  getProgress: (date) => {
+    const state = get()
+    return (
+      state.dailyProgress[date] || {
+        date,
+        exercises: [],
+      }
+    )
+  },
 
-        if (!progress) return { completed: 0, total }
+  isExerciseCompleted: (date, goalId) => {
+    const progress = get().dailyProgress[date]
+    if (!progress) return false
+    const exercise = progress.exercises.find((e) => e.goalId === goalId)
+    return exercise?.completed || false
+  },
 
-        const completed = progress.exercises.filter((e) => e.completed).length
-        return { completed, total }
-      },
+  getDayStats: (date) => {
+    const state = get()
+    const progress = state.dailyProgress[date]
+    const total = state.goals.length
 
-      getMonthlyStats: (year, month) => {
-        const stats: Record<string, { completed: number; total: number }> = {}
+    if (!progress) return { completed: 0, total }
 
-        // Get all days in the month
-        const daysInMonth = new Date(year, month + 1, 0).getDate()
+    const completed = progress.exercises.filter((e) => e.completed).length
+    return { completed, total }
+  },
 
-        for (let day = 1; day <= daysInMonth; day++) {
-          const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-          stats[date] = get().getDayStats(date)
-        }
+  getMonthlyStats: (year, month) => {
+    const stats: Record<string, { completed: number; total: number }> = {}
 
-        return stats
-      },
-    }),
-    {
-      name: 'daymark-fitness',
+    // Get all days in the month
+    const daysInMonth = new Date(year, month + 1, 0).getDate()
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+      stats[date] = get().getDayStats(date)
     }
-  )
-)
+
+    return stats
+  },
+
+  reset: () => set(initialState),
+}))

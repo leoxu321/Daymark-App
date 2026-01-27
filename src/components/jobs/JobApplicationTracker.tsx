@@ -1,13 +1,22 @@
 import { useMemo } from 'react'
 import { TrendingUp, Calendar, Target } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { useJobs } from '@/hooks/useJobs'
-import { useApplicationStore } from '@/store/applicationStore'
+import { useJobsQuery } from '@/hooks/useJobsQuery'
+import { useQuery } from '@tanstack/react-query'
+import { useAuth } from '@/providers/AuthProvider'
+import * as applicationsApi from '@/lib/supabase/api/applications'
 import { APPLICATION_STATUS_CONFIG } from '@/types'
 
 export function JobApplicationTracker() {
-  const { allJobs } = useJobs()
-  const { applications } = useApplicationStore()
+  const { allJobs } = useJobsQuery()
+  const { userId, isAuthenticated } = useAuth()
+
+  // Query applications from Supabase
+  const { data: applications = [] } = useQuery({
+    queryKey: ['applications', userId],
+    queryFn: () => applicationsApi.fetchApplications(userId!),
+    enabled: isAuthenticated && !!userId,
+  })
 
   // Calculate stats excluding 'not_applied' status
   const stats = useMemo(() => {
@@ -18,7 +27,7 @@ export function JobApplicationTracker() {
     // Filter only applications that count as applied
     const appliedApplications = applications.filter(app => {
       const config = APPLICATION_STATUS_CONFIG[app.status]
-      return config.countsAsApplied
+      return config?.countsAsApplied
     })
 
     const thisWeekApplications = appliedApplications.filter(app =>

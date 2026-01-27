@@ -3,13 +3,13 @@ import { format } from 'date-fns'
 import { Settings, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { JobSourceSettings } from '@/components/jobs/JobSourceSettings'
-import { ProgressBackup } from '@/components/settings/ProgressBackup'
 
 interface HeaderProps {
   calendarSection?: React.ReactNode
+  headerRight?: React.ReactNode
 }
 
-export function Header({ calendarSection }: HeaderProps) {
+export function Header({ calendarSection, headerRight }: HeaderProps) {
   const today = new Date()
   const [showSettings, setShowSettings] = useState(false)
 
@@ -25,6 +25,7 @@ export function Header({ calendarSection }: HeaderProps) {
           </div>
 
           <div className="flex items-center gap-2">
+            {headerRight}
             {calendarSection}
 
             <Button
@@ -53,7 +54,6 @@ export function Header({ calendarSection }: HeaderProps) {
             </div>
             <div className="p-4 space-y-4">
               <JobSourceSettings />
-              <ProgressBackup />
             </div>
           </div>
         </div>

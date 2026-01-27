@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
 import { JobCard } from './JobCard'
-import { useJobs } from '@/hooks/useJobs'
+import { useJobsQuery } from '@/hooks/useJobsQuery'
 
 export function DailyJobsWidget() {
   const {
@@ -16,7 +16,7 @@ export function DailyJobsWidget() {
     isJobCompleted,
     isJobSkipped,
     dailyProgress,
-  } = useJobs()
+  } = useJobsQuery()
 
   const { completed, goal } = dailyProgress
 

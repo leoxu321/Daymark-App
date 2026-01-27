@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
 import { AppSettings, JobSource, JobSearchParams } from '@/types'
 import {
   DEFAULT_JOBS_PER_DAY,
@@ -9,12 +8,21 @@ import {
   DEFAULT_JOB_SEARCH_PARAMS,
 } from '@/utils/constants'
 
+/**
+ * Settings Store - UI-only cache for settings data
+ *
+ * NOTE: This store no longer persists to localStorage.
+ * Data is synced via Supabase when authenticated.
+ */
 interface SettingsState {
   settings: AppSettings
+  setSettings: (settings: AppSettings) => void
   updateSettings: (updates: Partial<AppSettings>) => void
   resetSettings: () => void
   toggleJobSource: (source: JobSource) => void
   updateJobSearchParams: (params: Partial<JobSearchParams>) => void
+  // Reset store (for logout)
+  reset: () => void
 }
 
 const defaultSettings: AppSettings = {
@@ -27,56 +35,57 @@ const defaultSettings: AppSettings = {
   jobSearchParams: DEFAULT_JOB_SEARCH_PARAMS,
 }
 
-export const useSettingsStore = create<SettingsState>()(
-  persist(
-    (set) => ({
-      settings: defaultSettings,
+const initialState = {
+  settings: defaultSettings,
+}
 
-      updateSettings: (updates) => {
-        set((state) => ({
-          settings: { ...state.settings, ...updates },
-        }))
+export const useSettingsStore = create<SettingsState>()((set) => ({
+  ...initialState,
+
+  setSettings: (settings) => set({ settings }),
+
+  updateSettings: (updates) => {
+    set((state) => ({
+      settings: { ...state.settings, ...updates },
+    }))
+  },
+
+  resetSettings: () => {
+    set({ settings: defaultSettings })
+  },
+
+  toggleJobSource: (source) => {
+    set((state) => {
+      const current = state.settings.enabledJobSources
+      const enabled = current.includes(source)
+        ? current.filter((s) => s !== source)
+        : [...current, source]
+
+      // Ensure at least one source is enabled
+      if (enabled.length === 0) {
+        enabled.push('simplify-jobs')
+      }
+
+      return {
+        settings: {
+          ...state.settings,
+          enabledJobSources: enabled,
+        },
+      }
+    })
+  },
+
+  updateJobSearchParams: (params) => {
+    set((state) => ({
+      settings: {
+        ...state.settings,
+        jobSearchParams: {
+          ...state.settings.jobSearchParams,
+          ...params,
+        },
       },
+    }))
+  },
 
-      resetSettings: () => {
-        set({ settings: defaultSettings })
-      },
-
-      toggleJobSource: (source) => {
-        set((state) => {
-          const current = state.settings.enabledJobSources
-          const enabled = current.includes(source)
-            ? current.filter((s) => s !== source)
-            : [...current, source]
-
-          // Ensure at least one source is enabled
-          if (enabled.length === 0) {
-            enabled.push('simplify-jobs')
-          }
-
-          return {
-            settings: {
-              ...state.settings,
-              enabledJobSources: enabled,
-            },
-          }
-        })
-      },
-
-      updateJobSearchParams: (params) => {
-        set((state) => ({
-          settings: {
-            ...state.settings,
-            jobSearchParams: {
-              ...state.settings.jobSearchParams,
-              ...params,
-            },
-          },
-        }))
-      },
-    }),
-    {
-      name: 'daymark-settings',
-    }
-  )
-)
+  reset: () => set(initialState),
+}))

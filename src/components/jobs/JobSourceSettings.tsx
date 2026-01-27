@@ -11,6 +11,9 @@ import { Input } from '@/components/ui/input'
 import { useSettingsStore } from '@/store/settingsStore'
 import { JobSource, JOB_SOURCE_CONFIG } from '@/types'
 import { getConfiguredSources } from '@/services/jobSources'
+import { useAuth } from '@/providers/AuthProvider'
+import { useMutation } from '@tanstack/react-query'
+import * as settingsApi from '@/lib/supabase/api/settings'
 
 const ALL_SOURCES: JobSource[] = ['simplify-jobs', 'jsearch', 'remotive', 'adzuna']
 
@@ -37,10 +40,37 @@ const SOURCE_REQUIREMENTS: Record<JobSource, { requiresKey: boolean; envVar?: st
 }
 
 export function JobSourceSettings() {
-  const { settings, toggleJobSource, updateJobSearchParams } =
+  const { settings, toggleJobSource, updateJobSearchParams, setSettings } =
     useSettingsStore()
   const { enabledJobSources, jobSearchParams } = settings
   const configuredSources = getConfiguredSources()
+  const { userId, isAuthenticated } = useAuth()
+
+  // Mutation to update settings in Supabase
+  const updateSettingsMutation = useMutation({
+    mutationFn: async (updates: Partial<typeof settings>) => {
+      if (!userId) return
+      const updated = await settingsApi.updateSettings(userId, updates)
+      setSettings(updated)
+    },
+  })
+
+  const handleToggleSource = (source: JobSource) => {
+    toggleJobSource(source)
+    // Sync to Supabase if authenticated
+    if (isAuthenticated && userId) {
+      const current = enabledJobSources
+      const enabled = current.includes(source)
+        ? current.filter((s) => s !== source)
+        : [...current, source]
+
+      if (enabled.length === 0) {
+        enabled.push('simplify-jobs')
+      }
+
+      updateSettingsMutation.mutate({ enabledJobSources: enabled })
+    }
+  }
 
   return (
     <Card>
@@ -103,7 +133,7 @@ export function JobSourceSettings() {
                 <Button
                   variant={isEnabled ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => toggleJobSource(source)}
+                  onClick={() => handleToggleSource(source)}
                   disabled={!isConfigured}
                 >
                   {isEnabled ? 'Enabled' : 'Disabled'}

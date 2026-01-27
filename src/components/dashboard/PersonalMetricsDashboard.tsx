@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { TrendingUp, Calendar, Dumbbell, Briefcase, Activity, AlertTriangle, Lightbulb, Battery, BatteryLow, BatteryWarning } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { useJobStore } from '@/store/jobStore'
+import { useApplications } from '@/hooks/useApplications'
 import { useFitnessStore } from '@/store/fitnessStore'
 import { useSettingsStore } from '@/store/settingsStore'
 import { cn } from '@/lib/utils'
@@ -163,7 +163,9 @@ function GoalSuggestions({ suggestions }: { suggestions: GoalSuggestion[] }) {
 }
 
 export function PersonalMetricsDashboard() {
-  const { applications, dailyAssignments } = useJobStore()
+  const { applications } = useApplications()
+  // TODO: Add dailyAssignments query when needed for metrics
+  const dailyAssignments: Record<string, any> = {}
   const { goals, dailyProgress } = useFitnessStore()
   const { settings } = useSettingsStore()
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { GoogleOAuthProvider } from '@react-oauth/google'
-import { Calendar, Briefcase, Dumbbell, Home, ClipboardList } from 'lucide-react'
+import { Calendar, Briefcase, Dumbbell, Home, ClipboardList, User, LogOut } from 'lucide-react'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { TaskList } from '@/components/tasks/TaskList'
 import { DailyJobsWidget } from '@/components/jobs/DailyJobsWidget'
@@ -15,9 +15,10 @@ import { DailyFitnessWidget, FitnessGoalManager, MonthlyFitnessCalendar } from '
 import { PersonalMetricsDashboard } from '@/components/dashboard/PersonalMetricsDashboard'
 import { Button } from '@/components/ui/button'
 import { useGoogleCalendar } from '@/hooks/useGoogleCalendar'
-import { useCloudSync } from '@/hooks/useCloudSync'
 import { useCalendarStore } from '@/store/calendarStore'
 import { getTodayDateString } from '@/utils/dateUtils'
+import { AuthProvider, useAuth } from '@/providers/AuthProvider'
+import { useSupabaseSync } from '@/hooks/useSupabaseSync'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -64,33 +65,8 @@ function TabNav({ activeTab, onTabChange }: { activeTab: TabType; onTabChange: (
 
 // Header section with Google sign-in status
 function HeaderCalendarSection() {
-  const { isAuthenticated, userEmail, userPicture, login, logout } = useGoogleCalendar()
-
-  if (isAuthenticated) {
-    return (
-      <div className="flex items-center gap-2">
-        {userPicture ? (
-          <img
-            src={userPicture}
-            alt="Profile"
-            className="h-6 w-6 rounded-full hidden sm:block"
-          />
-        ) : null}
-        <span className="text-xs text-muted-foreground hidden sm:inline">
-          {userEmail}
-        </span>
-        <Button variant="outline" size="sm" onClick={logout}>
-          Sign Out
-        </Button>
-      </div>
-    )
-  }
-
-  return (
-    <Button variant="outline" size="sm" onClick={() => login()}>
-      Sign In
-    </Button>
-  )
+  // This section is now empty - calendar status is shown in the main auth indicator
+  return null
 }
 
 // Home Tab Content (with calendar integration)
@@ -149,6 +125,8 @@ type JobsSubTab = 'apply' | 'tracking'
 
 // Jobs Sub-Tab Navigation
 function JobsSubTabNav({ activeSubTab, onSubTabChange }: { activeSubTab: JobsSubTab; onSubTabChange: (tab: JobsSubTab) => void }) {
+  const { isAuthenticated } = useAuth()
+
   return (
     <div className="flex gap-2 mb-4">
       <Button
@@ -159,14 +137,16 @@ function JobsSubTabNav({ activeSubTab, onSubTabChange }: { activeSubTab: JobsSub
         <Briefcase className="h-4 w-4 mr-2" />
         Apply
       </Button>
-      <Button
-        variant={activeSubTab === 'tracking' ? 'default' : 'outline'}
-        size="sm"
-        onClick={() => onSubTabChange('tracking')}
-      >
-        <ClipboardList className="h-4 w-4 mr-2" />
-        Tracking
-      </Button>
+      {isAuthenticated && (
+        <Button
+          variant={activeSubTab === 'tracking' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => onSubTabChange('tracking')}
+        >
+          <ClipboardList className="h-4 w-4 mr-2" />
+          Tracking
+        </Button>
+      )}
     </div>
   )
 }
@@ -223,17 +203,14 @@ function FitnessTab() {
 // Dashboard content WITH Google Sign-In
 function DashboardWithCalendar() {
   const [activeTab, setActiveTab] = useState<TabType>('home')
-  const { isAuthenticated, fetchBusyTimes } = useGoogleCalendar()
+  const { isAuthenticated: isCalendarAuthenticated, fetchBusyTimes } = useGoogleCalendar()
 
-  // Enable auto-sync to Google Drive when signed in
-  useCloudSync()
-
-  // Fetch busy times when signed in
+  // Fetch busy times when calendar is connected
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isCalendarAuthenticated) {
       fetchBusyTimes(new Date())
     }
-  }, [isAuthenticated, fetchBusyTimes])
+  }, [isCalendarAuthenticated, fetchBusyTimes])
 
   return (
     <div className="space-y-6">
@@ -261,28 +238,112 @@ function DashboardWithoutCalendar() {
   )
 }
 
-function App() {
-  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+// Auth status indicator for header
+function AuthStatusIndicator() {
+  const { isAuthenticated, user, signOut, signInWithGoogle, isLoading } = useAuth()
+  const { login: loginCalendar, isAuthenticated: isCalendarAuth } = useGoogleCalendar()
 
-  // If no client ID, show without Google OAuth
+  if (isLoading) {
+    return <span className="text-xs text-muted-foreground">Loading...</span>
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <Button variant="outline" size="sm" onClick={signInWithGoogle}>
+        <User className="h-4 w-4 mr-2" />
+        Sign In
+      </Button>
+    )
+  }
+
+  const handleSignOut = async () => {
+    await signOut()
+  }
+
+  const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture
+
+  return (
+    <div className="flex items-center gap-2">
+      {avatarUrl ? (
+        <img
+          src={avatarUrl}
+          alt="Profile"
+          className="h-8 w-8 rounded-full"
+          title={user?.email || 'Profile'}
+        />
+      ) : (
+        <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+          <User className="h-4 w-4" />
+        </div>
+      )}
+      {!isCalendarAuth && (
+        <Button variant="ghost" size="sm" onClick={() => loginCalendar()}>
+          <Calendar className="h-4 w-4 mr-1" />
+          Connect Calendar
+        </Button>
+      )}
+      <Button variant="outline" size="sm" onClick={handleSignOut}>
+        <LogOut className="h-4 w-4" />
+      </Button>
+    </div>
+  )
+}
+
+// Auto-connect calendar helper (must be inside GoogleOAuthProvider)
+function AutoConnectCalendar() {
+  const { isAuthenticated } = useAuth()
+  const { login: loginCalendar, isAuthenticated: isCalendarAuth } = useGoogleCalendar()
+
+  useEffect(() => {
+    if (isAuthenticated && !isCalendarAuth) {
+      // Small delay to let the auth settle
+      setTimeout(() => {
+        console.log('Auto-connecting Google Calendar...')
+        loginCalendar()
+      }, 500)
+    }
+  }, [isAuthenticated, isCalendarAuth, loginCalendar])
+
+  return null
+}
+
+// Main app content with auth
+function AppContent() {
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+  const { isConfigured: isSupabaseReady } = useAuth()
+
+  // Sync user data from Supabase when authenticated
+  useSupabaseSync()
+
+  // If no Google client ID, show without Google OAuth
   if (!googleClientId) {
     return (
-      <QueryClientProvider client={queryClient}>
-        <MainLayout>
-          <DashboardWithoutCalendar />
-        </MainLayout>
-      </QueryClientProvider>
+      <MainLayout headerRight={isSupabaseReady ? <AuthStatusIndicator /> : undefined}>
+        <DashboardWithoutCalendar />
+      </MainLayout>
     )
   }
 
   return (
     <GoogleOAuthProvider clientId={googleClientId}>
-      <QueryClientProvider client={queryClient}>
-        <MainLayout calendarSection={<HeaderCalendarSection />}>
-          <DashboardWithCalendar />
-        </MainLayout>
-      </QueryClientProvider>
+      <AutoConnectCalendar />
+      <MainLayout
+        calendarSection={<HeaderCalendarSection />}
+        headerRight={isSupabaseReady ? <AuthStatusIndicator /> : undefined}
+      >
+        <DashboardWithCalendar />
+      </MainLayout>
     </GoogleOAuthProvider>
+  )
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <QueryClientProvider client={queryClient}>
+        <AppContent />
+      </QueryClientProvider>
+    </AuthProvider>
   )
 }
 
