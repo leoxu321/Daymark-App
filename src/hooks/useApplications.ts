@@ -2,7 +2,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/providers/AuthProvider'
 import * as applicationsApi from '@/lib/supabase/api/applications'
 import type { ApplicationStatus } from '@/types'
-import { APPLICATION_STATUS_CONFIG } from '@/types'
 import { useMemo } from 'react'
 
 export function useApplications() {
@@ -43,10 +42,8 @@ export function useApplications() {
     const statsByStatus: Record<ApplicationStatus, number> = {
       not_applied: 0,
       applied: 0,
-      screening: 0,
       interview: 0,
       offer: 0,
-      accepted: 0,
       rejected: 0,
       ghosted: 0,
       withdrawn: 0,

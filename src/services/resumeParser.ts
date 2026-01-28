@@ -3,6 +3,7 @@ import {
   PROGRAMMING_LANGUAGES,
   FRAMEWORKS,
   TOOLS,
+  normalizeSkill,
 } from '@/types'
 
 // Common job titles and roles to extract from resume
@@ -104,7 +105,43 @@ async function extractTextFromFile(file: File): Promise<string> {
 }
 
 async function extractPdfText(file: File): Promise<string> {
-  // Basic PDF text extraction
+  try {
+    // Use pdf.js for proper PDF parsing
+    const pdfjsLib = await import('pdfjs-dist')
+
+    // Set worker source
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+
+    const arrayBuffer = await file.arrayBuffer()
+    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer })
+    const pdf = await loadingTask.promise
+
+    let fullText = ''
+
+    // Extract text from each page
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i)
+      const textContent = await page.getTextContent()
+
+      // Concatenate all text items
+      const pageText = textContent.items
+        .map((item: any) => item.str)
+        .join(' ')
+
+      fullText += pageText + ' '
+    }
+
+    return fullText.trim()
+  } catch (error) {
+    console.error('PDF parsing error:', error)
+
+    // Fallback to basic extraction if pdf.js fails
+    return extractPdfTextFallback(file)
+  }
+}
+
+async function extractPdfTextFallback(file: File): Promise<string> {
+  // Basic fallback PDF text extraction
   const arrayBuffer = await file.arrayBuffer()
   const bytes = new Uint8Array(arrayBuffer)
 
@@ -146,7 +183,7 @@ function extractFromText(text: string): ParsedResume {
 }
 
 function findMatches(text: string, keywords: string[]): string[] {
-  const matches: string[] = []
+  const matches = new Set<string>()
 
   for (const keyword of keywords) {
     // Create regex that matches whole words (case insensitive)
@@ -156,11 +193,24 @@ function findMatches(text: string, keywords: string[]): string[] {
     )
 
     if (pattern.test(text)) {
-      matches.push(keyword)
+      matches.add(keyword)
     }
   }
 
-  return matches
+  // Also search for synonyms/variations
+  // Extract all words from text for synonym matching
+  const words = text.match(/\b[\w.#+]+\b/g) || []
+
+  for (const word of words) {
+    const normalized = normalizeSkill(word)
+
+    // If the normalized form matches one of our keywords, add it
+    if (keywords.some(k => k.toLowerCase() === normalized.toLowerCase())) {
+      matches.add(normalized)
+    }
+  }
+
+  return Array.from(matches)
 }
 
 function escapeRegex(string: string): string {

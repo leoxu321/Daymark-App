@@ -219,7 +219,7 @@ export function useJobsQuery() {
       let assignment = dailyAssignmentQuery.data
       if (!assignment) {
         // Create assignment if it doesn't exist
-        const created = await jobsApi.createDailyAssignment(userId, today, [])
+        await jobsApi.createDailyAssignment(userId, today, [])
         // Refetch to get the full assignment data
         const refetched = await jobsApi.getDailyAssignment(userId, today)
         assignment = refetched

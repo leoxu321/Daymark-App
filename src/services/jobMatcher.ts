@@ -1,4 +1,4 @@
-import { Job, UserSkills } from '@/types'
+import { Job, UserSkills, PROGRAMMING_LANGUAGES, FRAMEWORKS, TOOLS, normalizeSkill } from '@/types'
 
 export interface MatchResult {
   job: Job
@@ -36,19 +36,19 @@ const ROLE_KEYWORDS: Record<string, string[]> = {
   'Research': ['research', 'researcher', 'r&d', 'research engineer', 'research scientist'],
 }
 
-// Common technical keywords that jobs might require
-const COMMON_JOB_KEYWORDS = [
-  // Languages
-  'python', 'javascript', 'typescript', 'java', 'c++', 'c#', 'go', 'rust', 'ruby', 'php', 'swift', 'kotlin', 'scala', 'sql',
-  // Frameworks
-  'react', 'vue', 'angular', 'node', 'express', 'django', 'flask', 'spring', 'rails', '.net', 'next.js', 'fastapi',
-  // Tools
-  'git', 'docker', 'kubernetes', 'aws', 'azure', 'gcp', 'linux', 'postgresql', 'mysql', 'mongodb', 'redis', 'graphql',
-  // ML/AI
-  'tensorflow', 'pytorch', 'pandas', 'numpy', 'scikit-learn', 'machine learning', 'deep learning',
-  // General
-  'api', 'rest', 'microservices', 'agile', 'ci/cd', 'testing', 'debugging',
-]
+// Build comprehensive list from all skill categories
+const ALL_TECH_KEYWORDS = [
+  ...PROGRAMMING_LANGUAGES.map(s => s.toLowerCase()),
+  ...FRAMEWORKS.map(s => s.toLowerCase()),
+  ...TOOLS.map(s => s.toLowerCase()),
+  // Add common variations and abbreviations
+  'api', 'rest', 'restful', 'microservices', 'agile', 'scrum', 'testing', 'debugging',
+  'frontend', 'backend', 'fullstack', 'full stack', 'full-stack',
+  'machine learning', 'ml', 'deep learning', 'ai', 'artificial intelligence',
+  'data science', 'data engineering', 'data analysis',
+  'web development', 'mobile development', 'app development',
+  'devops', 'sre', 'cloud', 'infrastructure',
+].map(k => k.toLowerCase())
 
 export function calculateJobMatchScore(
   job: Job,
@@ -114,31 +114,50 @@ export function calculateJobMatchScore(
     }
   }
 
-  // Find what keywords the JOB mentions
-  const jobKeywordsFound: string[] = []
-  for (const keyword of COMMON_JOB_KEYWORDS) {
-    if (jobText.includes(keyword)) {
-      jobKeywordsFound.push(keyword)
+  // Find what keywords the JOB mentions using word boundary matching
+  const jobKeywordsFound = new Set<string>()
+  for (const keyword of ALL_TECH_KEYWORDS) {
+    // Use word boundary regex to avoid false matches (e.g., "Java" in "JavaScript")
+    const pattern = new RegExp(`\\b${escapeRegex(keyword)}\\b`, 'i')
+    if (pattern.test(jobText)) {
+      jobKeywordsFound.add(keyword)
     }
   }
 
-  // Find how many of the job's keywords match the resume
-  const matchedKeywords: string[] = []
+  // Normalize user skills for better matching
+  const normalizedResumeSkills = resumeSkills.map(s => normalizeSkill(s).toLowerCase())
+
+  // Find matches between job requirements and resume skills
+  const matchedKeywords = new Set<string>()
+
+  // Check each job keyword against resume skills
   for (const jobKeyword of jobKeywordsFound) {
-    for (const resumeSkill of resumeSkills) {
-      if (resumeSkill.toLowerCase().includes(jobKeyword) ||
-          jobKeyword.includes(resumeSkill.toLowerCase())) {
-        matchedKeywords.push(jobKeyword)
+    const normalizedJobKeyword = normalizeSkill(jobKeyword).toLowerCase()
+
+    for (let i = 0; i < resumeSkills.length; i++) {
+      const resumeSkill = resumeSkills[i]
+      const normalizedResumeSkill = normalizedResumeSkills[i]
+
+      // Exact match after normalization (e.g., "reactjs" -> "react" matches "react")
+      if (normalizedResumeSkill === normalizedJobKeyword) {
+        matchedKeywords.add(jobKeyword)
+        break
+      }
+
+      // Word boundary match for the original skill
+      const pattern = new RegExp(`\\b${escapeRegex(resumeSkill)}\\b`, 'i')
+      if (pattern.test(jobKeyword)) {
+        matchedKeywords.add(jobKeyword)
         break
       }
     }
   }
 
-  // Also check direct resume skill matches in job text
+  // Also check if resume skills appear directly in job text (word boundary)
   for (const skill of resumeSkills) {
     const pattern = new RegExp(`\\b${escapeRegex(skill)}\\b`, 'i')
-    if (pattern.test(jobText) && !matchedKeywords.includes(skill)) {
-      matchedKeywords.push(skill)
+    if (pattern.test(jobText) && !matchedKeywords.has(skill)) {
+      matchedKeywords.add(skill)
     }
   }
 
@@ -147,22 +166,24 @@ export function calculateJobMatchScore(
   // 2. Base score for having any matches
 
   let score = 0
+  const matchedCount = matchedKeywords.size
+  const jobKeywordCount = jobKeywordsFound.size
 
-  if (matchedKeywords.length > 0) {
+  if (matchedCount > 0) {
     // Base score of 50 for having ANY match
     score = 50
 
     // Add points for each match (up to 50 more points)
     // More matches = higher score
-    if (jobKeywordsFound.length > 0) {
+    if (jobKeywordCount > 0) {
       // What % of job requirements do you meet?
-      const matchRatio = matchedKeywords.length / jobKeywordsFound.length
+      const matchRatio = matchedCount / jobKeywordCount
       score += Math.round(matchRatio * 50)
     } else {
       // Job doesn't mention specific tech, give bonus for having skills
-      score += Math.min(matchedKeywords.length * 10, 40)
+      score += Math.min(matchedCount * 10, 40)
     }
-  } else if (jobKeywordsFound.length === 0) {
+  } else if (jobKeywordCount === 0) {
     // Generic job posting with no specific requirements
     // Give a moderate score if user has relevant skills
     score = resumeSkills.length > 0 ? 60 : 0
@@ -174,7 +195,7 @@ export function calculateJobMatchScore(
   return {
     job: { ...job, matchScore: score },
     score,
-    matchedKeywords: [...new Set([...matchedRoles, ...matchedKeywords])],
+    matchedKeywords: [...new Set([...matchedRoles, ...Array.from(matchedKeywords)])],
     matchesRoleFilter,
     hasResumeMatch: true,
   }
