@@ -1,4 +1,4 @@
-import { ExternalLink, X, MapPin, Building2, Sparkles } from 'lucide-react'
+import { Bot, ExternalLink, X, MapPin, Building2, Sparkles } from 'lucide-react'
 import { Job } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -12,6 +12,7 @@ interface JobCardProps {
   isSkipped: boolean
   onApply: () => void
   onSkip: () => void
+  onAutoApply: () => void
 }
 
 function MatchScoreBadge({ score }: { score: number }) {
@@ -40,6 +41,7 @@ export function JobCard({
   isSkipped,
   onApply,
   onSkip,
+  onAutoApply,
 }: JobCardProps) {
   const handleApply = () => {
     window.open(job.applicationUrl, '_blank', 'noopener,noreferrer')
@@ -103,6 +105,15 @@ export function JobCard({
                   title="Skip this job"
                 >
                   <X className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={onAutoApply}
+                  title="Auto apply"
+                >
+                  <Bot className="h-4 w-4" />
+                  Auto
                 </Button>
                 <Button size="sm" onClick={handleApply} title="Apply now">
                   <ExternalLink className="h-4 w-4 mr-1" />

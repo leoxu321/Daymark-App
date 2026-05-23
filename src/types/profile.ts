@@ -77,11 +77,23 @@ export const FRAMEWORKS = [
   '.NET',
   'ASP.NET Core',
 
+  // Desktop Frameworks
+  'Qt',
+  'Qt5',
+  'Qt6',
+  'Electron',
+  'Tauri',
+
   // Mobile Frameworks
   'React Native',
   'Flutter',
   'Ionic',
   'Xamarin',
+
+  // Game Engines
+  'Unity',
+  'Unreal Engine',
+  'Godot',
 
   // ML/AI Frameworks
   'TensorFlow',
@@ -99,6 +111,15 @@ export const FRAMEWORKS = [
   'Hadoop',
   'Airflow',
   'dbt',
+
+  // Python Libraries
+  'BeautifulSoup',
+  'Requests',
+  'Scrapy',
+  'Pillow',
+  'OpenAI',
+  'Whisper',
+  'Pyannote',
 
   // Other Frameworks
   'Hibernate',
@@ -197,6 +218,18 @@ export const TOOLS = [
   'Databricks',
   'Snowflake',
   'Apache Kafka',
+  'Jupyter',
+  'JupyterLab',
+  'Google Colab',
+  'Matplotlib',
+  'Seaborn',
+  'Plotly',
+  'MLflow',
+  'Weights & Biases',
+  'Anaconda',
+  'Conda',
+  'RStudio',
+  'Spyder',
 
   // Project Management
   'Jira',
@@ -217,8 +250,20 @@ export const TOOLS = [
   'Cypress',
   'Playwright',
   'JUnit',
+  'Mockito',
   'Mocha',
   'Vitest',
+  'TestNG',
+  'Jasmine',
+
+  // Development Tools
+  'VS Code',
+  'Visual Studio',
+  'IntelliJ IDEA',
+  'PyCharm',
+  'Eclipse',
+  'Android Studio',
+  'Xcode',
 
   // Other
   'Linux',
@@ -276,6 +321,11 @@ export const SKILL_SYNONYMS: Record<string, string> = {
   'nodejs': 'Node.js',
   'node js': 'Node.js',
 
+  // Express variations
+  'express': 'Express',
+  'expressjs': 'Express',
+  'express.js': 'Express',
+
   // Vue variations
   'vuejs': 'Vue',
   'vue.js': 'Vue',
@@ -302,6 +352,10 @@ export const SKILL_SYNONYMS: Record<string, string> = {
 
   // Java variations (NOT JavaScript!)
   'java': 'Java',
+
+  // Go variations
+  'golang': 'Go',
+  'go lang': 'Go',
 
   // Kubernetes variations
   'k8s': 'Kubernetes',
@@ -396,11 +450,73 @@ export const SKILL_SYNONYMS: Record<string, string> = {
 
   // TensorFlow variations
   'tensorflow': 'TensorFlow',
-  'tf': 'TensorFlow',
 
   // PyTorch variations
   'pytorch': 'PyTorch',
   'torch': 'PyTorch',
+
+  // Scikit-learn variations
+  'scikit-learn': 'Scikit-learn',
+  'sklearn': 'Scikit-learn',
+  'scikit learn': 'Scikit-learn',
+
+  // Pandas variations
+  'pandas': 'Pandas',
+
+  // NumPy variations
+  'numpy': 'NumPy',
+
+  // OpenCV variations
+  'opencv': 'OpenCV',
+  'cv2': 'OpenCV',
+
+  // Keras variations
+  'keras': 'Keras',
+
+  // Matplotlib variations
+  'matplotlib': 'Matplotlib',
+  'plt': 'Matplotlib',
+
+  // Seaborn variations
+  'seaborn': 'Seaborn',
+  'sns': 'Seaborn',
+
+  // Jupyter variations
+  'jupyter': 'Jupyter',
+  'jupyter notebook': 'Jupyter',
+  'jupyterlab': 'JupyterLab',
+
+  // BeautifulSoup variations
+  'beautifulsoup': 'BeautifulSoup',
+  'bs4': 'BeautifulSoup',
+
+  // Apache Spark variations
+  'apache spark': 'Apache Spark',
+  'pyspark': 'Apache Spark',
+  'spark': 'Apache Spark',
+
+  // Unity variations
+  'unity': 'Unity',
+  'unity3d': 'Unity',
+
+  // Qt variations
+  'qt': 'Qt',
+  'qt5': 'Qt5',
+  'qt6': 'Qt6',
+  'pyqt': 'Qt',
+  'pyside': 'Qt',
+
+  // RStudio variations
+  'rstudio': 'RStudio',
+  'r studio': 'RStudio',
+
+  // VS Code variations
+  'vscode': 'VS Code',
+  'vs code': 'VS Code',
+  'visual studio code': 'VS Code',
+
+  // Visual Studio variations
+  'visual studio': 'Visual Studio',
 
   // C++ variations
   'c++': 'C++',

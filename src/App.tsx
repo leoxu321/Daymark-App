@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { GoogleOAuthProvider } from '@react-oauth/google'
-import { Calendar, Briefcase, Dumbbell, Home, ClipboardList, User, LogOut } from 'lucide-react'
+import { Calendar, Briefcase, Dumbbell, Home, ClipboardList, User, LogOut, Bot } from 'lucide-react'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { TaskList } from '@/components/tasks/TaskList'
 import { DailyJobsWidget } from '@/components/jobs/DailyJobsWidget'
 import { JobApplicationTracker } from '@/components/jobs/JobApplicationTracker'
 import { ApplicationTracking } from '@/components/jobs/ApplicationTracking'
+import { ApplicationAutomation } from '@/components/jobs/ApplicationAutomation'
 import { GoogleSignIn } from '@/components/google/GoogleSignIn'
 import { BusyIndicator } from '@/components/calendar/BusyIndicator'
 import { MonthlyGoalCalendar } from '@/components/calendar/MonthlyGoalCalendar'
@@ -121,7 +122,7 @@ function HomeTabWithoutCalendar() {
   )
 }
 
-type JobsSubTab = 'apply' | 'tracking'
+type JobsSubTab = 'apply' | 'answers' | 'tracking'
 
 // Jobs Sub-Tab Navigation
 function JobsSubTabNav({ activeSubTab, onSubTabChange }: { activeSubTab: JobsSubTab; onSubTabChange: (tab: JobsSubTab) => void }) {
@@ -136,6 +137,14 @@ function JobsSubTabNav({ activeSubTab, onSubTabChange }: { activeSubTab: JobsSub
       >
         <Briefcase className="h-4 w-4 mr-2" />
         Apply
+      </Button>
+      <Button
+        variant={activeSubTab === 'answers' ? 'default' : 'outline'}
+        size="sm"
+        onClick={() => onSubTabChange('answers')}
+      >
+        <Bot className="h-4 w-4 mr-2" />
+        Profile & Answers
       </Button>
       {isAuthenticated && (
         <Button
@@ -177,6 +186,10 @@ function JobsTab() {
 
       {subTab === 'tracking' && (
         <ApplicationTracking />
+      )}
+
+      {subTab === 'answers' && (
+        <ApplicationAutomation />
       )}
     </div>
   )

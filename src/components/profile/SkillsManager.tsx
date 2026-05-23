@@ -6,25 +6,42 @@ import { useProfileStore } from '@/store/profileStore'
 import { useSettingsStore } from '@/store/settingsStore'
 import { ResumeUpload } from './ResumeUpload'
 import { ROLE_TYPES } from '@/types'
+import { useAuth } from '@/providers/AuthProvider'
+import * as profileApi from '@/lib/supabase/api/profile'
 
 const JOB_COUNT_OPTIONS = [5, 10, 20] as const
 
 export function SkillsManager() {
   const { profile, addSkill, removeSkill } = useProfileStore()
   const { settings, updateSettings } = useSettingsStore()
+  const { userId, isAuthenticated } = useAuth()
 
   const handleJobCountChange = (count: number) => {
     updateSettings({ jobsPerDay: count })
   }
 
-  const handleToggleRole = (role: string) => {
+  const handleToggleRole = async (role: string) => {
     const isSelected = profile.skills.roleTypes.includes(role)
+
+    // Update local store
     if (isSelected) {
       removeSkill('roleTypes', role)
     } else {
       addSkill('roleTypes', role)
     }
-    // Jobs will automatically update via useJobs hook reactivity
+
+    // Sync to Supabase if authenticated
+    if (isAuthenticated && userId) {
+      try {
+        if (isSelected) {
+          await profileApi.removeSkill(userId, 'roleTypes', role)
+        } else {
+          await profileApi.addSkill(userId, 'roleTypes', role)
+        }
+      } catch (error) {
+        console.error('Failed to sync role types to Supabase:', error)
+      }
+    }
   }
 
   const selectedRoles = profile.skills.roleTypes

@@ -3,6 +3,7 @@ export * from './job'
 export * from './calendar'
 export * from './profile'
 export * from './fitness'
+export * from './applicationAutomation'
 
 import { JobSource } from './job'
 

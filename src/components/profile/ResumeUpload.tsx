@@ -2,13 +2,18 @@ import { useCallback, useState } from 'react'
 import { Upload, FileText, X, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useProfileStore } from '@/store/profileStore'
-import { parseResumeFile } from '@/services/resumeParser'
+import { useApplicationAutomationStore } from '@/store/applicationAutomationStore'
+import { parseResumeDocument } from '@/services/resumeParser'
+import { useAuth } from '@/providers/AuthProvider'
+import * as profileApi from '@/lib/supabase/api/profile'
 
 export function ResumeUpload() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { profile, setSkills, setResumeInfo, clearResumeInfo } =
     useProfileStore()
+  const { updateApplicationProfile } = useApplicationAutomationStore()
+  const { userId, isAuthenticated } = useAuth()
 
   const handleFileUpload = useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -25,9 +30,44 @@ export function ResumeUpload() {
       setError(null)
 
       try {
-        const extractedSkills = await parseResumeFile(file)
-        setSkills(extractedSkills)
-        setResumeInfo(file.name)
+        console.log('Parsing resume file:', file.name)
+        const parsedResume = await parseResumeDocument(file)
+        const extractedSkills = parsedResume.skills
+        console.log('Extracted skills from resume:', extractedSkills)
+
+        updateApplicationProfile(
+          Object.fromEntries(
+            Object.entries(parsedResume.applicationProfile).filter(([, value]) =>
+              typeof value === 'string' ? value.trim().length > 0 : value !== undefined
+            )
+          )
+        )
+
+        // Sync to Supabase if authenticated
+        if (isAuthenticated && userId) {
+          // Preserve existing roleTypes (user-selected, not from resume)
+          const updatedSkills = {
+            ...extractedSkills,
+            roleTypes: profile.skills.roleTypes, // Keep user-selected roles
+          }
+
+          console.log('Saving skills to Supabase:', updatedSkills)
+          const updatedProfile = await profileApi.updateProfile(userId, {
+            skills: updatedSkills,
+            resumeFileName: file.name,
+            resumeUploadedAt: new Date().toISOString(),
+          })
+
+          console.log('Profile updated in Supabase:', updatedProfile)
+
+          // Update local store with the confirmed data from Supabase
+          setSkills(updatedProfile.skills)
+          setResumeInfo(updatedProfile.resumeFileName || file.name)
+        } else {
+          // Not authenticated, just update local store
+          setSkills(extractedSkills)
+          setResumeInfo(file.name)
+        }
       } catch (err) {
         setError('Failed to parse resume. Try manual entry.')
         console.error('Resume parsing error:', err)
@@ -35,7 +75,14 @@ export function ResumeUpload() {
         setIsProcessing(false)
       }
     },
-    [setSkills, setResumeInfo]
+    [
+      setSkills,
+      setResumeInfo,
+      updateApplicationProfile,
+      isAuthenticated,
+      userId,
+      profile.skills.roleTypes,
+    ]
   )
 
   const handleRemove = () => {
