@@ -8,6 +8,7 @@ import { DailyJobsWidget } from '@/components/jobs/DailyJobsWidget'
 import { JobApplicationTracker } from '@/components/jobs/JobApplicationTracker'
 import { ApplicationTracking } from '@/components/jobs/ApplicationTracking'
 import { ApplicationAutomation } from '@/components/jobs/ApplicationAutomation'
+import { JobPipelineOptimizer } from '@/components/jobs/JobPipelineOptimizer'
 import { GoogleSignIn } from '@/components/google/GoogleSignIn'
 import { BusyIndicator } from '@/components/calendar/BusyIndicator'
 import { MonthlyGoalCalendar } from '@/components/calendar/MonthlyGoalCalendar'
@@ -122,7 +123,7 @@ function HomeTabWithoutCalendar() {
   )
 }
 
-type JobsSubTab = 'apply' | 'answers' | 'tracking'
+type JobsSubTab = 'apply' | 'optimizer' | 'answers' | 'tracking'
 
 // Jobs Sub-Tab Navigation
 function JobsSubTabNav({ activeSubTab, onSubTabChange }: { activeSubTab: JobsSubTab; onSubTabChange: (tab: JobsSubTab) => void }) {
@@ -147,14 +148,24 @@ function JobsSubTabNav({ activeSubTab, onSubTabChange }: { activeSubTab: JobsSub
         Profile & Answers
       </Button>
       {isAuthenticated && (
-        <Button
-          variant={activeSubTab === 'tracking' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => onSubTabChange('tracking')}
-        >
-          <ClipboardList className="h-4 w-4 mr-2" />
-          Tracking
-        </Button>
+        <>
+          <Button
+            variant={activeSubTab === 'optimizer' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => onSubTabChange('optimizer')}
+          >
+            <Bot className="h-4 w-4 mr-2" />
+            Optimizer
+          </Button>
+          <Button
+            variant={activeSubTab === 'tracking' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => onSubTabChange('tracking')}
+          >
+            <ClipboardList className="h-4 w-4 mr-2" />
+            Tracking
+          </Button>
+        </>
       )}
     </div>
   )
@@ -186,6 +197,10 @@ function JobsTab() {
 
       {subTab === 'tracking' && (
         <ApplicationTracking />
+      )}
+
+      {subTab === 'optimizer' && (
+        <JobPipelineOptimizer />
       )}
 
       {subTab === 'answers' && (

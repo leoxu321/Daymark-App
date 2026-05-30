@@ -4,6 +4,7 @@ export * from './calendar'
 export * from './profile'
 export * from './fitness'
 export * from './applicationAutomation'
+export * from './jobPipelineAgent'
 
 import { JobSource } from './job'
 
