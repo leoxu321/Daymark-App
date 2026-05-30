@@ -4,7 +4,9 @@ import {
   PROGRAMMING_LANGUAGES,
   FRAMEWORKS,
   TOOLS,
+  ROLE_TYPES,
   SKILL_SYNONYMS,
+  normalizeSkill,
 } from '@/types'
 
 // Common job titles and roles to extract from resume
@@ -83,26 +85,27 @@ export async function parseResumeFile(file: File): Promise<UserSkills> {
   const parsed = await parseResumeDocument(file)
   return {
     ...parsed.skills,
-    otherKeywords: [...parsed.extractedTitles, ...parsed.qualifications],
+    otherKeywords: uniqueItems([
+      ...parsed.skills.otherKeywords,
+      ...parsed.extractedTitles,
+      ...parsed.qualifications,
+    ]),
   }
 }
 
 export async function parseResumeDocument(file: File): Promise<ParsedResumeDocument> {
   const text = await extractTextFromFile(file)
-  console.log('=== EXTRACTED TEXT FROM RESUME ===')
-  console.log('Text length:', text.length)
-  console.log('FULL TEXT:')
-  console.log(text)
-  console.log('=== END OF TEXT ===')
-
   const parsed = extractFromText(text)
-  console.log('=== PARSED SECTIONS ===', parsed)
 
   return {
     ...parsed,
     skills: {
       ...parsed.skills,
-      otherKeywords: [...parsed.extractedTitles, ...parsed.qualifications],
+      otherKeywords: uniqueItems([
+        ...parsed.skills.otherKeywords,
+        ...parsed.extractedTitles,
+        ...parsed.qualifications,
+      ]),
     },
     applicationProfile: extractApplicationProfile(text, file.name),
     rawText: text,
@@ -213,40 +216,38 @@ function extractFromText(text: string): ParsedResume {
 
   // Try to extract from structured sections first
   const sections = extractSections(text)
-  console.log('=== DETECTED SECTIONS ===')
-  console.log('Languages section:', sections.languages ? sections.languages.substring(0, 200) : 'NOT FOUND')
-  console.log('Frameworks section:', sections.frameworks ? sections.frameworks.substring(0, 200) : 'NOT FOUND')
-  console.log('Tools section:', sections.tools ? sections.tools.substring(0, 200) : 'NOT FOUND')
-  console.log('Skills section:', sections.skills ? sections.skills.substring(0, 200) : 'NOT FOUND')
 
   // Combine section-based extraction with full-text search
   const languagesFromSections = sections.languages ? findMatches(sections.languages.toLowerCase(), [...PROGRAMMING_LANGUAGES]) : []
   const frameworksFromSections = sections.frameworks ? findMatches(sections.frameworks.toLowerCase(), [...FRAMEWORKS]) : []
   const toolsFromSections = sections.tools ? findMatches(sections.tools.toLowerCase(), [...TOOLS]) : []
 
-  console.log('Languages from sections:', languagesFromSections)
-  console.log('Frameworks from sections:', frameworksFromSections)
-  console.log('Tools from sections:', toolsFromSections)
-
   // Also search the full text as fallback
   const languagesFromFull = findMatches(normalizedText, [...PROGRAMMING_LANGUAGES])
   const frameworksFromFull = findMatches(normalizedText, [...FRAMEWORKS])
   const toolsFromFull = findMatches(normalizedText, [...TOOLS])
 
-  console.log('Languages from full text:', languagesFromFull)
-  console.log('Frameworks from full text:', frameworksFromFull)
-  console.log('Tools from full text:', toolsFromFull)
+  const extractedTitles = findMatches(normalizedText, [...JOB_TITLES])
+  const qualifications = findMatches(normalizedText, [...QUALIFICATIONS])
+  const languages = uniqueItems([...languagesFromSections, ...languagesFromFull])
+  const frameworks = uniqueItems([...frameworksFromSections, ...frameworksFromFull])
+  const tools = uniqueItems([...toolsFromSections, ...toolsFromFull])
+  const knownSkills = new Set(
+    [...languages, ...frameworks, ...tools].map((skill) => normalizeSkill(skill).toLowerCase())
+  )
+  const sectionKeywords = extractSkillCandidatesFromSections(sections)
+    .filter((skill) => !knownSkills.has(normalizeSkill(skill).toLowerCase()))
 
   return {
     skills: {
-      languages: [...new Set([...languagesFromSections, ...languagesFromFull])],
-      frameworks: [...new Set([...frameworksFromSections, ...frameworksFromFull])],
-      tools: [...new Set([...toolsFromSections, ...toolsFromFull])],
-      roleTypes: [], // User selects these manually
-      otherKeywords: [],
+      languages,
+      frameworks,
+      tools,
+      roleTypes: inferRoleTypes(normalizedText, extractedTitles),
+      otherKeywords: uniqueItems(sectionKeywords),
     },
-    extractedTitles: findMatches(normalizedText, [...JOB_TITLES]),
-    qualifications: findMatches(normalizedText, [...QUALIFICATIONS]),
+    extractedTitles,
+    qualifications,
   }
 }
 
@@ -269,7 +270,6 @@ function extractSections(text: string): {
 
   if (technicalSkillsMatch && technicalSkillsMatch[1]) {
     const technicalSkillsSection = technicalSkillsMatch[1]
-    console.log('Found Technical Skills section:', technicalSkillsSection.substring(0, 500))
 
     // Try to extract subsections within Technical Skills
     // Use lookaheads to stop at the next section header (handles both newline and space-separated formats)
@@ -288,23 +288,19 @@ function extractSections(text: string): {
 
     if (langMatch && langMatch[1]) {
       sections.languages = langMatch[1].trim()
-      console.log('Matched Languages subsection:', langMatch[1].trim())
     }
 
     // Data/ML items should go into frameworks (they're ML frameworks/libraries)
     if (dataMLMatch && dataMLMatch[1]) {
       sections.frameworks = (sections.frameworks ? sections.frameworks + ', ' : '') + dataMLMatch[1].trim()
-      console.log('Matched Data/ML subsection:', dataMLMatch[1].trim())
     }
 
     if (frameworkMatch && frameworkMatch[1]) {
       sections.frameworks = (sections.frameworks ? sections.frameworks + ', ' : '') + frameworkMatch[1].trim()
-      console.log('Matched Frameworks subsection:', frameworkMatch[1].trim())
     }
 
     if (toolsMatch && toolsMatch[1]) {
       sections.tools = toolsMatch[1].trim()
-      console.log('Matched Tools subsection:', toolsMatch[1].trim())
     }
 
     // If we found at least one subsection, use the full technical skills section as fallback
@@ -363,6 +359,125 @@ function extractSections(text: string): {
   }
 
   return sections
+}
+
+function uniqueItems(items: string[]): string[] {
+  const seen = new Set<string>()
+  const result: string[] = []
+
+  for (const item of items) {
+    const cleaned = item.replace(/\s+/g, ' ').trim()
+    if (!cleaned) continue
+
+    const canonical = normalizeSkill(cleaned)
+    const key = canonical.toLowerCase()
+    if (seen.has(key)) continue
+
+    seen.add(key)
+    result.push(canonical)
+  }
+
+  return result
+}
+
+function extractSkillCandidatesFromSections(sections: {
+  languages?: string
+  frameworks?: string
+  tools?: string
+  skills?: string
+}): string[] {
+  const sectionText = [
+    sections.languages,
+    sections.frameworks,
+    sections.tools,
+    sections.skills,
+  ]
+    .filter(Boolean)
+    .join('\n')
+
+  if (!sectionText.trim()) return []
+
+  return uniqueItems(
+    sectionText
+      .replace(/[•●▪]/g, ',')
+      .split(/[,;\n|]/)
+      .flatMap(splitCompoundSkill)
+      .map(cleanSkillCandidate)
+      .filter(isUsefulSkillCandidate)
+  )
+}
+
+function splitCompoundSkill(value: string): string[] {
+  const trimmed = value.trim()
+  if (/^c\s*\/\s*c\+\+$/i.test(trimmed)) return ['C', 'C++']
+  if (/^html\s*\/\s*css$/i.test(trimmed)) return ['HTML', 'CSS']
+  return trimmed.split(/\s+\/\s+/)
+}
+
+function cleanSkillCandidate(value: string): string {
+  return value
+    .replace(/^\s*(?:programming\s+)?(?:languages?|frameworks?|libraries?|tools?|technologies?|data\s*\/?\s*ml|machine\s+learning)\s*:?\s*/i, '')
+    .replace(/\([^)]*\)/g, '')
+    .replace(/\[[^\]]*\]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function isUsefulSkillCandidate(value: string): boolean {
+  if (!value) return false
+  if (value.length < 2 || value.length > 40) return false
+  if (!/[a-zA-Z]/.test(value)) return false
+  if (/@|https?:\/\/|www\./i.test(value)) return false
+  if (/^\d|(?:19|20)\d{2}|gpa|university|college|school|bachelor|master|phd/i.test(value)) return false
+
+  const words = value.split(/\s+/)
+  if (words.length > 5) return false
+
+  const lowValue = value.toLowerCase()
+  const blocked = new Set([
+    'skills',
+    'technical skills',
+    'experience',
+    'education',
+    'projects',
+    'coursework',
+    'relevant coursework',
+    'and',
+    'or',
+  ])
+
+  return !blocked.has(lowValue)
+}
+
+function inferRoleTypes(normalizedText: string, titles: string[]): string[] {
+  const text = `${normalizedText} ${titles.join(' ')}`.toLowerCase()
+  const roleMatches: Partial<Record<(typeof ROLE_TYPES)[number], RegExp[]>> = {
+    'Software Engineer': [/\bsoftware (?:engineer|developer)\b/, /\bswe\b/, /\bsde\b/],
+    Frontend: [/\bfront[-\s]?end\b/, /\breact\b/, /\bui engineer\b/],
+    Backend: [/\bback[-\s]?end\b/, /\bapi\b/, /\bserver\b/],
+    'Full Stack': [/\bfull[-\s]?stack\b/],
+    Mobile: [/\bmobile\b/, /\breact native\b/, /\bflutter\b/],
+    iOS: [/\bios\b/, /\bswift\b/],
+    Android: [/\bandroid\b/, /\bkotlin\b/],
+    DevOps: [/\bdevops\b/, /\bci\/cd\b/, /\bkubernetes\b/, /\bdocker\b/],
+    'Data Science': [/\bdata scien(?:ce|tist)\b/, /\banalytics\b/],
+    'Machine Learning': [/\bmachine learning\b/, /\bml engineer\b/, /\bdeep learning\b/],
+    AI: [/\bartificial intelligence\b/, /\bgenerative ai\b/, /\bllm\b/],
+    'Data Engineering': [/\bdata engineer(?:ing)?\b/, /\betl\b/, /\bpipeline\b/],
+    'Data Analyst': [/\bdata analyst\b/, /\bbusiness intelligence\b/],
+    Security: [/\bsecurity\b/, /\bcybersecurity\b/],
+    QA: [/\bqa\b/, /\bquality assurance\b/, /\bsdet\b/],
+    Testing: [/\btest(?:ing)?\b/, /\bautomation test\b/],
+    Embedded: [/\bembedded\b/, /\bfirmware\b/],
+    Systems: [/\bsystems engineer\b/, /\bsystems programming\b/],
+    Cloud: [/\bcloud\b/, /\baws\b/, /\bazure\b/, /\bgcp\b/],
+    Infrastructure: [/\binfrastructure\b/, /\bplatform engineer\b/],
+    Product: [/\bproduct manager\b/, /\bapm\b/],
+    'UX/UI': [/\bux\b/, /\buser experience\b/, /\bproduct design\b/],
+    Research: [/\bresearch\b/, /\br&d\b/],
+  }
+
+  return ROLE_TYPES.filter((role) => roleMatches[role]?.some((pattern) => pattern.test(text)))
 }
 
 // Ambiguous short words that need context to be valid skills

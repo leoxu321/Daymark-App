@@ -6,6 +6,23 @@ import { useApplicationAutomationStore } from '@/store/applicationAutomationStor
 import { parseResumeDocument } from '@/services/resumeParser'
 import { useAuth } from '@/providers/AuthProvider'
 import * as profileApi from '@/lib/supabase/api/profile'
+import type { UserSkills } from '@/types'
+
+function uniqueSkills(skills: string[]): string[] {
+  return Array.from(new Set(skills.map((skill) => skill.trim()).filter(Boolean)))
+}
+
+function mergeResumeSkills(existingSkills: UserSkills, extractedSkills: UserSkills): UserSkills {
+  return {
+    languages: uniqueSkills([...existingSkills.languages, ...extractedSkills.languages]),
+    frameworks: uniqueSkills([...existingSkills.frameworks, ...extractedSkills.frameworks]),
+    tools: uniqueSkills([...existingSkills.tools, ...extractedSkills.tools]),
+    roleTypes: existingSkills.roleTypes.length > 0
+      ? existingSkills.roleTypes
+      : extractedSkills.roleTypes,
+    otherKeywords: uniqueSkills([...existingSkills.otherKeywords, ...extractedSkills.otherKeywords]),
+  }
+}
 
 export function ResumeUpload() {
   const [isProcessing, setIsProcessing] = useState(false)
@@ -30,10 +47,8 @@ export function ResumeUpload() {
       setError(null)
 
       try {
-        console.log('Parsing resume file:', file.name)
         const parsedResume = await parseResumeDocument(file)
         const extractedSkills = parsedResume.skills
-        console.log('Extracted skills from resume:', extractedSkills)
 
         updateApplicationProfile(
           Object.fromEntries(
@@ -44,28 +59,21 @@ export function ResumeUpload() {
         )
 
         // Sync to Supabase if authenticated
-        if (isAuthenticated && userId) {
-          // Preserve existing roleTypes (user-selected, not from resume)
-          const updatedSkills = {
-            ...extractedSkills,
-            roleTypes: profile.skills.roleTypes, // Keep user-selected roles
-          }
+        const updatedSkills = mergeResumeSkills(profile.skills, extractedSkills)
 
-          console.log('Saving skills to Supabase:', updatedSkills)
+        if (isAuthenticated && userId) {
           const updatedProfile = await profileApi.updateProfile(userId, {
             skills: updatedSkills,
             resumeFileName: file.name,
             resumeUploadedAt: new Date().toISOString(),
           })
 
-          console.log('Profile updated in Supabase:', updatedProfile)
-
           // Update local store with the confirmed data from Supabase
           setSkills(updatedProfile.skills)
           setResumeInfo(updatedProfile.resumeFileName || file.name)
         } else {
           // Not authenticated, just update local store
-          setSkills(extractedSkills)
+          setSkills(updatedSkills)
           setResumeInfo(file.name)
         }
       } catch (err) {

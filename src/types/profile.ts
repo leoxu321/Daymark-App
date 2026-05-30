@@ -14,6 +14,8 @@ export interface UserSkills {
 
 // Predefined skill options for UI selectors
 export const PROGRAMMING_LANGUAGES = [
+  'HTML',
+  'CSS',
   'Python',
   'JavaScript',
   'TypeScript',
@@ -61,6 +63,14 @@ export const FRAMEWORKS = [
   'Remix',
   'Nuxt.js',
   'Astro',
+  'Redux',
+  'React Query',
+  'TanStack Query',
+  'Zustand',
+  'Tailwind CSS',
+  'Bootstrap',
+  'Material UI',
+  'Chakra UI',
 
   // Backend Frameworks
   'Node.js',
@@ -103,6 +113,7 @@ export const FRAMEWORKS = [
   'OpenCV',
   'Hugging Face',
   'LangChain',
+  'LangGraph',
 
   // Data Frameworks
   'Pandas',
@@ -274,6 +285,12 @@ export const TOOLS = [
   'Apache',
   'Prisma',
   'tRPC',
+  'CI/CD',
+  'Agile',
+  'Scrum',
+  'OAuth',
+  'JSON',
+  'YAML',
 ] as const
 
 export const ROLE_TYPES = [
@@ -337,6 +354,12 @@ export const SKILL_SYNONYMS: Record<string, string> = {
   'angular js': 'Angular',
 
   // JavaScript variations
+  'html': 'HTML',
+  'html5': 'HTML',
+  'css': 'CSS',
+  'css3': 'CSS',
+  'scss': 'CSS',
+  'sass': 'CSS',
   'js': 'JavaScript',
   'javascript': 'JavaScript',
   'ecmascript': 'JavaScript',
@@ -447,6 +470,15 @@ export const SKILL_SYNONYMS: Record<string, string> = {
   // Redux variations
   'redux': 'Redux',
   'redux toolkit': 'Redux',
+  'rtk': 'Redux',
+
+  // React Query variations
+  'react query': 'React Query',
+  'tanstack query': 'TanStack Query',
+  '@tanstack/react-query': 'TanStack Query',
+
+  // Zustand variations
+  'zustand': 'Zustand',
 
   // TensorFlow variations
   'tensorflow': 'TensorFlow',
@@ -545,6 +577,22 @@ export const SKILL_SYNONYMS: Record<string, string> = {
   'tailwind': 'Tailwind CSS',
   'tailwindcss': 'Tailwind CSS',
   'tailwind css': 'Tailwind CSS',
+
+  // UI library variations
+  'mui': 'Material UI',
+  'material ui': 'Material UI',
+  'material-ui': 'Material UI',
+  'chakra': 'Chakra UI',
+  'chakra ui': 'Chakra UI',
+  'bootstrap': 'Bootstrap',
+
+  // LangGraph variations
+  'langgraph': 'LangGraph',
+
+  // Data format variations
+  'json': 'JSON',
+  'yaml': 'YAML',
+  'yml': 'YAML',
 }
 
 // Normalize a skill string to its canonical form

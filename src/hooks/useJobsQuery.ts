@@ -122,7 +122,7 @@ export function useJobsQuery() {
 
     if (!assignment) {
       // No assignment exists yet - return top ranked jobs
-      const rankedJobs = filterAndRankJobs(allJobs, profile.skills)
+      const rankedJobs = filterAndRankJobs(allJobs, profile.skills, hasResume)
         .slice(0, DISPLAY_COUNT)
         .map((job) => {
           const result = calculateJobMatchScore(job, profile.skills, hasResume)
@@ -285,7 +285,7 @@ export function useJobsQuery() {
 
       // Get unseen jobs and select top ones
       const unseenJobs = await jobsApi.getUnseenJobs(userId, settings.jobsPerDay * 3)
-      const rankedJobs = filterAndRankJobs(unseenJobs, profile.skills)
+      const rankedJobs = filterAndRankJobs(unseenJobs, profile.skills, hasResume)
       const selectedJobIds = rankedJobs.slice(0, settings.jobsPerDay).map((j) => j.id)
 
       return jobsApi.createDailyAssignment(userId, today, selectedJobIds)

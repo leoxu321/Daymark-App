@@ -55,7 +55,19 @@ export function calculateJobMatchScore(
   skills: UserSkills,
   hasResume: boolean = false
 ): MatchResult {
-  const jobText = `${job.role} ${job.company}`.toLowerCase()
+  const roleText = `${job.role} ${job.company}`.toLowerCase()
+  const jobText = [
+    job.role,
+    job.company,
+    job.location,
+    job.description,
+    job.employmentType,
+    job.salary,
+    job.remote ? 'remote' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
   const selectedRoles = skills.roleTypes
 
   // Check if job matches any selected role type
@@ -65,7 +77,7 @@ export function calculateJobMatchScore(
   for (const role of selectedRoles) {
     const keywords = ROLE_KEYWORDS[role] || [role.toLowerCase()]
     for (const keyword of keywords) {
-      if (jobText.includes(keyword.toLowerCase())) {
+      if (roleText.includes(keyword.toLowerCase()) || jobText.includes(keyword.toLowerCase())) {
         matchesRoleFilter = true
         matchedRoles.push(role)
         break
@@ -117,9 +129,7 @@ export function calculateJobMatchScore(
   // Find what keywords the JOB mentions using word boundary matching
   const jobKeywordsFound = new Set<string>()
   for (const keyword of ALL_TECH_KEYWORDS) {
-    // Use word boundary regex to avoid false matches (e.g., "Java" in "JavaScript")
-    const pattern = new RegExp(`\\b${escapeRegex(keyword)}\\b`, 'i')
-    if (pattern.test(jobText)) {
+    if (containsSkill(jobText, keyword)) {
       jobKeywordsFound.add(keyword)
     }
   }
@@ -145,8 +155,7 @@ export function calculateJobMatchScore(
       }
 
       // Word boundary match for the original skill
-      const pattern = new RegExp(`\\b${escapeRegex(resumeSkill)}\\b`, 'i')
-      if (pattern.test(jobKeyword)) {
+      if (containsSkill(jobKeyword, resumeSkill)) {
         matchedKeywords.add(jobKeyword)
         break
       }
@@ -155,8 +164,7 @@ export function calculateJobMatchScore(
 
   // Also check if resume skills appear directly in job text (word boundary)
   for (const skill of resumeSkills) {
-    const pattern = new RegExp(`\\b${escapeRegex(skill)}\\b`, 'i')
-    if (pattern.test(jobText) && !matchedKeywords.has(skill)) {
+    if (containsSkill(jobText, skill) && !matchedKeywords.has(skill)) {
       matchedKeywords.add(skill)
     }
   }
@@ -239,4 +247,16 @@ export function hasResumeSkills(skills: UserSkills): boolean {
 
 function escapeRegex(string: string): string {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function containsSkill(text: string, skill: string): boolean {
+  const escapedSkill = escapeRegex(skill.toLowerCase())
+
+  if (/[+#.]/.test(skill)) {
+    const pattern = new RegExp(`(?:^|[^a-z0-9])${escapedSkill}(?:[^a-z0-9]|$)`, 'i')
+    return pattern.test(text)
+  }
+
+  const pattern = new RegExp(`\\b${escapedSkill}\\b`, 'i')
+  return pattern.test(text)
 }
