@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { ReactNode, useEffect, useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import { Calendar, Briefcase, Dumbbell, Home, ClipboardList, User, LogOut, Bot } from 'lucide-react'
@@ -15,6 +15,7 @@ import { MonthlyGoalCalendar } from '@/components/calendar/MonthlyGoalCalendar'
 import { SkillsManager } from '@/components/profile/SkillsManager'
 import { DailyFitnessWidget, FitnessGoalManager, MonthlyFitnessCalendar } from '@/components/fitness'
 import { PersonalMetricsDashboard } from '@/components/dashboard/PersonalMetricsDashboard'
+import { AuthGate } from '@/components/auth/AuthGate'
 import { Button } from '@/components/ui/button'
 import { useGoogleCalendar } from '@/hooks/useGoogleCalendar'
 import { useCalendarStore } from '@/store/calendarStore'
@@ -103,19 +104,19 @@ function HomeTabWithoutCalendar() {
         <div className="rounded-xl border bg-card p-6">
           <h3 className="font-semibold mb-2 flex items-center gap-2">
             <Calendar className="h-5 w-5" />
-            Sign In with Google
+            Google Calendar
           </h3>
           <div className="p-3 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg text-sm mb-3">
             <p className="font-medium text-yellow-800 dark:text-yellow-200">
-              Google Sign-In not configured
+              Google Calendar not configured
             </p>
             <p className="text-yellow-700 dark:text-yellow-300 mt-1">
               Add VITE_GOOGLE_CLIENT_ID to your .env.local file to enable
-              Google Sign-In and sync.
+              calendar sync.
             </p>
           </div>
           <p className="text-sm text-muted-foreground">
-            Sign in with Google to sync your progress across devices and access your calendar.
+            Calendar sync lets Daymark shift tasks around your scheduled events.
           </p>
         </div>
       </div>
@@ -267,21 +268,11 @@ function DashboardWithoutCalendar() {
 }
 
 // Auth status indicator for header
-function AuthStatusIndicator() {
-  const { isAuthenticated, user, signOut, signInWithGoogle, isLoading } = useAuth()
-  const { login: loginCalendar, isAuthenticated: isCalendarAuth } = useGoogleCalendar()
+function UserStatusMenu({ calendarAction }: { calendarAction?: ReactNode }) {
+  const { user, signOut, isLoading } = useAuth()
 
   if (isLoading) {
     return <span className="text-xs text-muted-foreground">Loading...</span>
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <Button variant="outline" size="sm" onClick={signInWithGoogle}>
-        <User className="h-4 w-4 mr-2" />
-        Sign In
-      </Button>
-    )
   }
 
   const handleSignOut = async () => {
@@ -304,12 +295,7 @@ function AuthStatusIndicator() {
           <User className="h-4 w-4" />
         </div>
       )}
-      {!isCalendarAuth && (
-        <Button variant="ghost" size="sm" onClick={() => loginCalendar()}>
-          <Calendar className="h-4 w-4 mr-1" />
-          Connect Calendar
-        </Button>
-      )}
+      {calendarAction}
       <Button variant="outline" size="sm" onClick={handleSignOut}>
         <LogOut className="h-4 w-4" />
       </Button>
@@ -317,28 +303,30 @@ function AuthStatusIndicator() {
   )
 }
 
-// Auto-connect calendar helper (must be inside GoogleOAuthProvider)
-function AutoConnectCalendar() {
-  const { isAuthenticated } = useAuth()
+function SupabaseAuthStatusIndicator() {
+  return <UserStatusMenu />
+}
+
+function CalendarAuthStatusIndicator() {
   const { login: loginCalendar, isAuthenticated: isCalendarAuth } = useGoogleCalendar()
 
-  useEffect(() => {
-    if (isAuthenticated && !isCalendarAuth) {
-      // Small delay to let the auth settle
-      setTimeout(() => {
-        console.log('Auto-connecting Google Calendar...')
-        loginCalendar()
-      }, 500)
-    }
-  }, [isAuthenticated, isCalendarAuth, loginCalendar])
-
-  return null
+  return (
+    <UserStatusMenu
+      calendarAction={
+        !isCalendarAuth ? (
+          <Button variant="ghost" size="sm" onClick={() => loginCalendar()}>
+            <Calendar className="h-4 w-4 mr-1" />
+            Connect Calendar
+          </Button>
+        ) : undefined
+      }
+    />
+  )
 }
 
 // Main app content with auth
 function AppContent() {
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
-  const { isConfigured: isSupabaseReady } = useAuth()
 
   // Sync user data from Supabase when authenticated
   useSupabaseSync()
@@ -346,22 +334,25 @@ function AppContent() {
   // If no Google client ID, show without Google OAuth
   if (!googleClientId) {
     return (
-      <MainLayout headerRight={isSupabaseReady ? <AuthStatusIndicator /> : undefined}>
-        <DashboardWithoutCalendar />
-      </MainLayout>
+      <AuthGate>
+        <MainLayout headerRight={<SupabaseAuthStatusIndicator />}>
+          <DashboardWithoutCalendar />
+        </MainLayout>
+      </AuthGate>
     )
   }
 
   return (
-    <GoogleOAuthProvider clientId={googleClientId}>
-      <AutoConnectCalendar />
-      <MainLayout
-        calendarSection={<HeaderCalendarSection />}
-        headerRight={isSupabaseReady ? <AuthStatusIndicator /> : undefined}
-      >
-        <DashboardWithCalendar />
-      </MainLayout>
-    </GoogleOAuthProvider>
+    <AuthGate>
+      <GoogleOAuthProvider clientId={googleClientId}>
+        <MainLayout
+          calendarSection={<HeaderCalendarSection />}
+          headerRight={<CalendarAuthStatusIndicator />}
+        >
+          <DashboardWithCalendar />
+        </MainLayout>
+      </GoogleOAuthProvider>
+    </AuthGate>
   )
 }
 
